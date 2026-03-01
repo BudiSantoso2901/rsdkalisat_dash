@@ -208,31 +208,56 @@ class DashController extends Controller
     }
     public function getJadwalDokter(Request $request)
     {
-        $query = DB::table('rsv_schedules')
-            ->join('sections', 'rsv_schedules.section_id', '=', 'sections.id')
-            ->join('users', 'rsv_schedules.dokter_id', '=', 'users.id')
-            ->select([
-                'rsv_schedules.title as nama_dokter',
-                'users.name',
-                'sections.code',
-                'sections.prefix',
-                'sections.title as nama_poli',
-                'rsv_schedules.kodesubspesialis',
-                'rsv_schedules.date',
-                'rsv_schedules.open_time',
-                'rsv_schedules.closed_time',
-                'rsv_schedules.kuotajkn',
-                'rsv_schedules.kuotanonjkn',
-                'rsv_schedules.kapasitaspasien'
-            ]);
+        $query = DB::table('rsv_schedules as s')
+            ->join('sections as sec', 's.section_id', '=', 'sec.id')
+            ->join('users as u', 's.dokter_id', '=', 'u.id')
+
+            // 🔥 Tambah join pasien
+            ->leftJoin('tr_pxregistrations as r', function ($join) {
+                $join->on('r.schedule_id', '=', 's.id')
+                    ->where('r.status_batal', 0);
+            })
+
+            ->selectRaw('
+            s.id,
+            s.title as nama_dokter,
+            u.name,
+            sec.code,
+            sec.prefix,
+            sec.title as nama_poli,
+            s.kodesubspesialis,
+            s.date,
+            s.open_time,
+            s.closed_time,
+            s.kuotajkn,
+            s.kuotanonjkn,
+            s.kapasitaspasien,
+            COUNT(r.id) as total_pasien
+        ')
+
+            ->groupBy(
+                's.id',
+                's.title',
+                'u.name',
+                'sec.code',
+                'sec.prefix',
+                'sec.title',
+                's.kodesubspesialis',
+                's.date',
+                's.open_time',
+                's.closed_time',
+                's.kuotajkn',
+                's.kuotanonjkn',
+                's.kapasitaspasien'
+            );
 
         /*
     |--------------------------------------------------------------------------
-    | DEFAULT: HARI INI SAJA (AGAR RINGAN)
+    | DEFAULT: HARI INI
     |--------------------------------------------------------------------------
     */
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
-            $query->whereDate('rsv_schedules.date', Carbon::today());
+            $query->whereDate('s.date', Carbon::today());
         }
 
         /*
@@ -245,7 +270,7 @@ class DashController extends Controller
             $start = Carbon::parse($request->start_date)->startOfDay();
             $end   = Carbon::parse($request->end_date)->endOfDay();
 
-            $query->whereBetween('rsv_schedules.date', [$start, $end]);
+            $query->whereBetween('s.date', [$start, $end]);
         }
 
         return DataTables::of($query)
@@ -271,6 +296,37 @@ class DashController extends Controller
                     ? Carbon::parse($row->closed_time)->format('H:i')
                     : '-';
             })
+
+            // 🔥 TAMBAH KOLOM KUOTA PROGRESS
+            ->addColumn('kuota_progress', function ($row) {
+
+                $kapasitas = $row->kapasitaspasien ?? 0;
+                $terisi = $row->total_pasien ?? 0;
+
+                $persen = $kapasitas > 0 ? round(($terisi / $kapasitas) * 100) : 0;
+
+                $warna = 'bg-success';
+
+                if ($persen >= 100) {
+                    $warna = 'bg-danger';
+                } elseif ($persen >= 80) {
+                    $warna = 'bg-warning';
+                }
+
+                return '
+                <div style="min-width:130px">
+                    <div class="fw-semibold mb-1">
+                        ' . $terisi . ' / ' . $kapasitas . '
+                    </div>
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar ' . $warna . '"
+                            style="width: ' . $persen . '%">
+                        </div>
+                    </div>
+                </div>
+            ';
+            })
+            ->rawColumns(['date', 'kuota_progress'])
 
             ->make(true);
     }

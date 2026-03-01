@@ -119,7 +119,10 @@
                         data: 'closed_time'
                     },
                     {
-                        data: 'kapasitaspasien',
+                        data: 'kuota_progress',
+                        name: 'kuota_progress',
+                        orderable: false,
+                        searchable: false,
                         className: 'text-center'
                     },
                 ],
