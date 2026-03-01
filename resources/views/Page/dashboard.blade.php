@@ -55,7 +55,7 @@
                             </div>
 
                             <h5 class="fw-semibold">
-                                Rawat Jalan vs Rawat Inap
+                                Rawat Jalan dan Rawat Inap
                             </h5>
 
                             <canvas id="chartRawat"></canvas>
@@ -93,7 +93,7 @@
                             </div>
 
                             <h5 class="fw-semibold">
-                                Pasien Baru vs Lama
+                                Pasien Baru dan Pasien Lama
                             </h5>
 
                             <canvas id="chartPasien"></canvas>
