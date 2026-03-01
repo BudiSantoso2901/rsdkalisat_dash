@@ -11,10 +11,7 @@ use Yajra\DataTables\Facades\DataTables;
 class DashController extends Controller
 {
     //
-    public function view_dashboard()
-    {
-        return view('Page.dashboard');
-    }
+
     public function view_dokter()
     {
         return view('Page.dokter');
@@ -88,54 +85,126 @@ class DashController extends Controller
 
             ->make(true);
     }
-    public function jadwalDokterHariIni()
+    // public function view_dashboard()
+    // {
+    //     return view('Page.dashboard');
+    // }
+    public function jadwalDokterHariIni(Request $request)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER BULAN & TAHUN
+    |--------------------------------------------------------------------------
+    */
+        $bulan = $request->bulan ?? now()->month;
+        $tahun = $request->tahun ?? now()->year;
+
         $today = Carbon::today();
 
-        $query = DB::table('rsv_schedules as s')
+        /*
+    |--------------------------------------------------------------------------
+    | 1️⃣ JADWAL DOKTER (TETAP HARI INI)
+    |--------------------------------------------------------------------------
+    */
+        $jadwal = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
             ->leftJoin('tr_pxregistrations as r', function ($join) {
                 $join->on('r.schedule_id', '=', 's.id')
                     ->where('r.status_batal', 0);
             })
-
             ->selectRaw('
             s.id,
-            s.title as nama_dokter,
             u.name,
-            sec.code,
             sec.title as nama_poli,
-            s.date,
             s.open_time,
             s.closed_time,
-            s.kuotajkn,
-            s.kuotanonjkn,
             s.kapasitaspasien,
             COUNT(r.id) as total_pasien
         ')
-
             ->whereDate('s.date', $today)
-
             ->groupBy(
                 's.id',
-                's.title',
                 'u.name',
-                'sec.code',
                 'sec.title',
-                's.date',
                 's.open_time',
                 's.closed_time',
-                's.kuotajkn',
-                's.kuotanonjkn',
                 's.kapasitaspasien'
             )
+            ->orderBy('s.open_time')
+            ->get();
 
-            ->orderBy('s.open_time', 'asc');
+        /*
+    |--------------------------------------------------------------------------
+    | 2️⃣ KUNJUNGAN PER POLI (BULANAN)
+    |--------------------------------------------------------------------------
+    */
+        $kunjunganPerPoli = DB::table('tr_pxregistrations as r')
+            ->join('sections as s', 'r.section_id', '=', 's.id')
+            ->selectRaw('
+            s.title as nama_poli,
+            COUNT(r.id) as total
+        ')
+            ->whereMonth('r.schedule_date', $bulan)
+            ->whereYear('r.schedule_date', $tahun)
+            ->where('r.status_batal', 0)
+            ->groupBy('s.title')
+            ->orderByDesc('total')
+            ->get();
 
-        return DataTables::of($query)
-            ->addIndexColumn()
-            ->make(true);
+        /*
+    |--------------------------------------------------------------------------
+    | 3️⃣ RAWAT JALAN VS INAP (BULANAN)
+    |--------------------------------------------------------------------------
+    */
+        $rawatJalan = DB::table('tr_pxregistrations')
+            ->whereMonth('schedule_date', $bulan)
+            ->whereYear('schedule_date', $tahun)
+            ->where('status_batal', 0)
+            ->where('inpatient_status', 0)
+            ->count();
+
+        $rawatInap = DB::table('tr_pxregistrations')
+            ->whereMonth('schedule_date', $bulan)
+            ->whereYear('schedule_date', $tahun)
+            ->where('status_batal', 0)
+            ->where('inpatient_status', 1)
+            ->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | 4️⃣ PASIEN BARU VS LAMA (BULANAN)
+    |--------------------------------------------------------------------------
+    */
+        $pasienBaru = DB::table('tr_pxregistrations')
+            ->whereMonth('schedule_date', $bulan)
+            ->whereYear('schedule_date', $tahun)
+            ->where('status_batal', 0)
+            ->where('first_regstatus', 1)
+            ->count();
+
+        $pasienLama = DB::table('tr_pxregistrations')
+            ->whereMonth('schedule_date', $bulan)
+            ->whereYear('schedule_date', $tahun)
+            ->where('status_batal', 0)
+            ->where('first_regstatus', 0)
+            ->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | RETURN VIEW
+    |--------------------------------------------------------------------------
+    */
+        return view('Page.dashboard', compact(
+            'jadwal',
+            'kunjunganPerPoli',
+            'rawatJalan',
+            'rawatInap',
+            'pasienBaru',
+            'pasienLama',
+            'bulan',
+            'tahun'
+        ));
     }
     public function getJadwalDokter(Request $request)
     {

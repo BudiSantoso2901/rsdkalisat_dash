@@ -1,336 +1,274 @@
 @extends('layouts.layouts')
+
 @section('content')
     <div class="content">
-
-        <!-- Start Content-->
         <div class="container-fluid">
-            <!-- end row -->
 
-            <div class="row">
-                <div class="col-xl-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h4 class="header-title mt-0">Informasi Kunjungan</h4>
+            {{-- ================= FILTER BULAN & TAHUN ================= --}}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="GET" action="{{ route('dashboard') }}">
+                        <div class="row align-items-end">
 
-                            <div class="widget-chart text-center">
-                                <div id="morris-donut-example" dir="ltr" style="height: 245px;" class="morris-chart">
-                                </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Bulan</label>
+                                <select name="bulan" class="form-control">
+                                    @for ($i = 1; $i <= 12; $i++)
+                                        <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
+                                            {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
+                                        </option>
+                                    @endfor
+                                </select>
                             </div>
-                            <ul class="list-inline chart-detail-list mb-0">
-                                <li class="list-inline-item">
-                                    <h5 style="color: #ff8acc;"><i class="fa fa-circle me-1"></i>Kunjungan IGD
-                                    </h5>
-                                </li>
-                                <li class="list-inline-item">
-                                    <h5 style="color: #5b69bc;"><i class="fa fa-circle me-1"></i>Kunjungan Rawat Jalan
-                                    </h5>
-                                </li>
-                                <li class="list-inline-item">
-                                    <h5 style="color: #202a63;"><i class="fa fa-circle me-1"></i>Kunjungan Rawat Inap
-                                    </h5>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h4 class="header-title mt-0">Kunjungan IGD</h4>
-                            <div id="morris-bar-example" dir="ltr" style="height: 280px;" class="morris-chart">
+
+                            <div class="col-md-3">
+                                <label class="form-label">Tahun</label>
+                                <select name="tahun" class="form-control">
+                                    @for ($t = now()->year; $t >= now()->year - 20; $t--)
+                                        <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>
+                                            {{ $t }}
+                                        </option>
+                                    @endfor
+                                </select>
                             </div>
-                        </div>
-                    </div>
-                </div><!-- end col -->
 
-                <div class="col-xl-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <div class="dropdown float-end">
-                                <a href="#" class="dropdown-toggle arrow-none card-drop" data-bs-toggle="dropdown"
-                                    aria-expanded="false">
-                                    <i class="mdi mdi-dots-vertical"></i>
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end">
-                                    <!-- item-->
-                                    <a href="javascript:void(0);" class="dropdown-item">Action</a>
-                                    <!-- item-->
-                                    <a href="javascript:void(0);" class="dropdown-item">Another action</a>
-                                    <!-- item-->
-                                    <a href="javascript:void(0);" class="dropdown-item">Something else</a>
-                                    <!-- item-->
-                                    <a href="javascript:void(0);" class="dropdown-item">Separated link</a>
-                                </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100">Tampilkan</button>
                             </div>
-                            <h4 class="header-title mt-0">Kunjungan Rawat Inap dan Rawat Jalan</h4>
-                            <div id="morris-line-example" dir="ltr" style="height: 280px;" class="morris-chart">
-                            </div>
+
                         </div>
-                    </div>
-                </div><!-- end col -->
-            </div><!-- end col -->
-
-
-        </div>
-        <!-- end row -->
-
-
-
-        <div class="row">
-            <div class="col-xl-4">
-                <div class="card">
-                    <div class="card-body">
-
-                        <!-- Dropdown kanan atas -->
-                        <div class="dropdown float-end">
-                            <a href="#" class="dropdown-toggle arrow-none card-drop" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                <i class="mdi mdi-dots-vertical"></i>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-end">
-                                <a href="javascript:void(0);" class="dropdown-item">Refresh</a>
-                                <a href="javascript:void(0);" class="dropdown-item">Export</a>
-                            </div>
-                        </div>
-
-                        <!-- Judul -->
-                        <h4 class="header-title mb-3">Statistik Kunjungan</h4>
-
-                        <!-- List Data -->
-                        <ul class="list-group list-group-flush">
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-hospital me-2"></i> GAWAT DARURAT</span>
-                                <span class="text-card-baru fw-bold">2</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-clipboard2-pulse me-2"></i> POLIKLINIK</span>
-                                <span class="text-card-baru fw-bold">82</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-tools me-2"></i> PENUNJANG</span>
-                                <span class="text-card-baru fw-bold">26</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-capsule me-2"></i> FARMASI</span>
-                                <span class="text-card-baru fw-bold">0</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-heart-pulse me-2"></i> INTENSIVE UNIT</span>
-                                <span class="text-card-baru fw-bold">1</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-building me-2"></i> RAWAT INAP</span>
-                                <span class="text-card-baru fw-bold">1</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-building me-2"></i> RUANG OK</span>
-                                <span class="text-card-baru fw-bold">1</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-building me-2"></i> GIZI</span>
-                                <span class="text-card-baru fw-bold">1</span>
-                            </li>
-
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-building me-2"></i> APOTEK</span>
-                                <span class="text-card-baru fw-bold">1</span>
-                            </li>
-
-                        </ul>
-
-                        <!-- Total -->
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-                            <span class="text-muted">
-                                <i class="bi bi-people-fill me-2"></i> JUMLAH KUNJUNGAN
-                            </span>
-                            <span class="text-card-baru fw-bold fs-5">112</span>
-                        </div>
-
-                    </div>
+                    </form>
                 </div>
             </div>
 
-            <div class="col-xl-8">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="dropdown float-end">
-                            <a href="#" class="dropdown-toggle arrow-none card-drop" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                <i class="mdi mdi-dots-vertical"></i>
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-end">
-                                <!-- item-->
-                                <a href="javascript:void(0);" class="dropdown-item">Action</a>
-                                <!-- item-->
-                                <a href="javascript:void(0);" class="dropdown-item">Another action</a>
-                                <!-- item-->
-                                <a href="javascript:void(0);" class="dropdown-item">Something else</a>
-                                <!-- item-->
-                                <a href="javascript:void(0);" class="dropdown-item">Separated link</a>
+
+            {{-- ================== ROW 1 ================== --}}
+            <div class="row">
+
+                {{-- RAWAT JALAN VS RAWAT INAP --}}
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+
+                            <div class="mb-2">
+                                <i class="bi bi-hospital fs-2 text-primary"></i>
                             </div>
-                        </div>
 
-                        <h4 class="header-title mt-0 mb-3">Jadwal Dokter Hari ini</h4>
+                            <h5 class="fw-semibold">
+                                Rawat Jalan vs Rawat Inap
+                            </h5>
 
-                        <div class="table-responsive">
-                            <table id="table-jadwal" class="table table-hover mb-0 w-100">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Dokter</th>
-                                        <th>Tanggal</th>
-                                        <th>Poli</th>
-                                        <th>Jam Praktek</th>
-                                        <th>Kuota Pasien</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                            <canvas id="chartRawat"></canvas>
                         </div>
                     </div>
                 </div>
 
-            </div><!-- end col -->
+
+                {{-- KUNJUNGAN PER POLI --}}
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+
+                            <div class="mb-2">
+                                <i class="bi bi-clipboard2-pulse fs-2 text-success"></i>
+                            </div>
+
+                            <h5 class="fw-semibold">
+                                Kunjungan Per Poli
+                            </h5>
+
+                            <canvas id="chartPoli"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+
+                {{-- PASIEN BARU VS LAMA --}}
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+
+                            <div class="mb-2">
+                                <i class="bi bi-people-fill fs-2 text-warning"></i>
+                            </div>
+
+                            <h5 class="fw-semibold">
+                                Pasien Baru vs Lama
+                            </h5>
+
+                            <canvas id="chartPasien"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            {{-- ================== ROW 2 ================== --}}
+            <div class="row mt-3">
+
+                {{-- STATISTIK BULANAN --}}
+                <div class="col-xl-4">
+                    <div class="card">
+                        <div class="card-body">
+
+                            <h5 class="mb-3">
+                                Statistik Bulan {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
+                                {{ $tahun }}
+                            </h5>
+
+                            @forelse ($kunjunganPerPoli as $poli)
+                                <div class="d-flex justify-content-between border-bottom py-2">
+                                    <span>{{ $poli->nama_poli }}</span>
+                                    <strong>{{ $poli->total }}</strong>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-3">
+                                    Tidak ada data kunjungan
+                                </div>
+                            @endforelse
+
+                            <div class="mt-3 pt-2 border-top d-flex justify-content-between">
+                                <span class="fw-semibold">Total Kunjungan</span>
+                                <span class="fw-bold fs-5">
+                                    {{ $rawatJalan + $rawatInap }}
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+
+                {{-- JADWAL DOKTER HARI INI --}}
+                <div class="col-xl-8">
+                    <div class="card">
+                        <div class="card-body">
+
+                            <h5 class="mb-3">Jadwal Dokter Hari Ini</h5>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Dokter</th>
+                                            <th>Poli</th>
+                                            <th>Jam</th>
+                                            <th>Kuota</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($jadwal as $index => $item)
+                                            @php
+                                                $kapasitas = $item->kapasitaspasien ?? 0;
+                                                $terisi = $item->total_pasien ?? 0;
+                                                $persen = $kapasitas > 0 ? ($terisi / $kapasitas) * 100 : 0;
+                                            @endphp
+
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td><strong>{{ $item->name }}</strong></td>
+                                                <td>{{ $item->nama_poli }}</td>
+                                                <td>{{ $item->open_time }} - {{ $item->closed_time }}</td>
+
+                                                <td style="min-width:130px">
+                                                    <div class="small fw-semibold mb-1">
+                                                        {{ $terisi }} / {{ $kapasitas }}
+                                                    </div>
+                                                    <div class="progress" style="height:6px;">
+                                                        <div class="progress-bar
+                                                    {{ $persen >= 100 ? 'bg-danger' : ($persen >= 80 ? 'bg-warning' : 'bg-success') }}"
+                                                            style="width: {{ $persen }}%">
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td>
+                                                    @if ($terisi < $kapasitas)
+                                                        <span class="badge bg-success">Tersedia</span>
+                                                    @else
+                                                        <span class="badge bg-danger">Penuh</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">
+                                                    Tidak ada jadwal hari ini
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
 
         </div>
-        <!-- end row -->
-
-    </div> <!-- container-fluid -->
-
-    </div> <!-- content -->
+    </div>
 @endsection
 @push('script')
-    <!--Morris Chart-->
-    <script src="{{ asset('assets/libs/morris.js06/morris.min.js') }}"></script>
-    <script src="{{ asset('assets/libs/raphael/raphael.min.js') }}"></script>
-    <script src="{{ asset('assets/js/pages/dashboard.init.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
-        $(document).ready(function() {
+        const rawatJalan = {{ $rawatJalan ?? 0 }};
+        const rawatInap = {{ $rawatInap ?? 0 }};
+        const pasienBaru = {{ $pasienBaru ?? 0 }};
+        const pasienLama = {{ $pasienLama ?? 0 }};
 
-            $('#table-jadwal').DataTable({
+        const poliLabels = {!! json_encode($kunjunganPerPoli->pluck('nama_poli')) !!};
+        const poliData = {!! json_encode($kunjunganPerPoli->pluck('total')) !!};
 
-                processing: true,
-                serverSide: true,
-                searching: false,
-                lengthChange: false,
-                pageLength: 7,
-                ordering: false,
-                info: false,
+        // Rawat Chart
+        new Chart(document.getElementById('chartRawat'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Rawat Jalan', 'Rawat Inap'],
+                datasets: [{
+                    data: [rawatJalan, rawatInap],
+                    backgroundColor: ['#36A2EB', '#FF6384']
+                }]
+            }
+        });
 
-                ajax: {
-                    url: "{{ route('dokter.hari_ini') }}",
-                    type: "GET"
-                },
-
-                columns: [{
-                        data: 'DT_RowIndex',
-                        orderable: false,
-                        searchable: false
-                    },
-
-                    {
-                        data: 'name',
-                        render: function(data) {
-                            return `<strong>${data}</strong>`;
-                        }
-                    },
-
-                    {
-                        data: 'date',
-                        render: function(data) {
-                            let date = new Date(data);
-                            return date.toLocaleDateString('id-ID', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                            });
-                        }
-                    },
-
-                    {
-                        data: null,
-                        render: function(data, type, row) {
-                            return `${row.code} - ${row.nama_poli}`;
-                        }
-                    },
-
-                    {
-                        data: null,
-                        render: function(data, type, row) {
-                            return `${row.open_time} - ${row.closed_time}`;
-                        }
-                    },
-
-                    // 🔥 KUOTA PROGRESS FIX
-                    {
-                        data: null,
-                        className: 'text-center',
-                        render: function(data, type, row) {
-
-                            let kapasitas = Number(row.kapasitaspasien ?? 0);
-                            let terisi = Number(row.total_pasien ?? 0);
-
-                            let persen = kapasitas > 0 ?
-                                Math.round((terisi / kapasitas) * 100) :
-                                0;
-
-                            let warna = 'bg-success';
-
-                            if (persen >= 100) {
-                                warna = 'bg-danger';
-                            } else if (persen >= 80) {
-                                warna = 'bg-warning';
-                            }
-
-                            return `
-                        <div style="min-width:130px">
-                            <div class="fw-semibold mb-1">
-                                ${terisi} / ${kapasitas}
-                            </div>
-                            <div class="progress" style="height:6px;">
-                                <div class="progress-bar ${warna}"
-                                     role="progressbar"
-                                     style="width: ${persen}%">
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                        }
-                    },
-
-                    {
-                        data: null,
-                        className: 'text-center',
-                        render: function(data, type, row) {
-
-                            let sisa = Number(row.kapasitaspasien ?? 0) -
-                                Number(row.total_pasien ?? 0);
-
-                            if (sisa > 0) {
-                                return `<span class="badge bg-success">Tersedia</span>`;
-                            } else {
-                                return `<span class="badge bg-danger">Penuh</span>`;
-                            }
-                        }
+        // Poli Chart
+        new Chart(document.getElementById('chartPoli'), {
+            type: 'bar',
+            data: {
+                labels: poliLabels,
+                datasets: [{
+                    label: 'Jumlah Pasien',
+                    data: poliData,
+                    backgroundColor: '#5b69bc'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
                     }
-                ],
-
-                language: {
-                    processing: "Memuat..."
                 }
+            }
+        });
 
-            });
-
+        // Pasien Chart
+        new Chart(document.getElementById('chartPasien'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Pasien Baru', 'Pasien Lama'],
+                datasets: [{
+                    data: [pasienBaru, pasienLama],
+                    backgroundColor: ['#4CAF50', '#FFC107']
+                }]
+            }
         });
     </script>
 @endpush

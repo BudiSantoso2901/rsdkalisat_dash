@@ -5,7 +5,7 @@
               <div class="col-md-6">
                   <script>
                       document.write(new Date().getFullYear())
-                  </script> &copy; Adminto theme by <a href="">Coderthemes</a>
+                  </script> &copy; Created by <a href="">TIM IT RSD KALISAT</a>
               </div>
               <div class="col-md-6">
                   <div class="text-md-end footer-links d-none d-sm-block">
