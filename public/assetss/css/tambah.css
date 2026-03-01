@@ -1,0 +1,23 @@
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    color: #0ea5e9;
+    /* biru kesehatan */
+    font-size: 34px;
+    font-weight: 700;
+}
+
+.stat-label {
+    color: #1e3a8a;
+    /* biru lebih gelap */
+    font-weight: 600;
+    margin-top: 5px;
+}
+.text-card-baru {
+    color: #1e3a8a;
+    /* biru kesehatan */
+    font-size: 18px;
+    font-weight: 600;
+}
