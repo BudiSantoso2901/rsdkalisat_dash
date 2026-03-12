@@ -101,28 +101,49 @@ class DashController extends Controller
 
         $today = Carbon::today();
 
+        $tanggalMulai   = $request->tanggal_mulai
+            ? Carbon::parse($request->tanggal_mulai)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $tanggalSelesai = $request->tanggal_selesai
+            ? Carbon::parse($request->tanggal_selesai)->endOfDay()
+            : Carbon::today()->endOfDay();
+
         /*
     |--------------------------------------------------------------------------
     | 1️⃣ JADWAL DOKTER (TETAP HARI INI)
     |--------------------------------------------------------------------------
     */
+
         $jadwal = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
-            ->leftJoin('tr_pxregistrations as r', function ($join) {
-                $join->on('r.schedule_id', '=', 's.id')
-                    ->where('r.status_batal', 0);
+
+            ->leftJoin('tr_pxregistrations as r', function ($join) use ($tanggalMulai, $tanggalSelesai) {
+                $join->on('r.section_id', '=', 's.section_id')
+                    ->on('r.dokter_id', '=', 's.dokter_id')
+                    ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
+                    ->where('r.status', 1);
             })
-            ->selectRaw('
-            s.id,
-            u.name,
-            sec.title as nama_poli,
-            s.open_time,
-            s.closed_time,
-            s.kapasitaspasien,
-            COUNT(r.id) as total_pasien
-        ')
-            ->whereDate('s.date', $today)
+
+            ->join('patients as p', 'r.patient_id', '=', 'p.id')
+            ->join('patient_types as pt', 'r.type_id', '=', 'pt.id')
+
+            ->select(
+                's.id',
+                'u.name as nama_dokter',
+                'sec.title as nama_poli',
+                's.open_time',
+                's.closed_time',
+                's.kapasitaspasien',
+                DB::raw('COUNT(r.id) as total_pasien')
+            )
+
+            ->whereBetween('s.date', [
+                $tanggalMulai->toDateString(),
+                $tanggalSelesai->toDateString()
+            ])
+
             ->groupBy(
                 's.id',
                 'u.name',
@@ -131,9 +152,10 @@ class DashController extends Controller
                 's.closed_time',
                 's.kapasitaspasien'
             )
+
             ->orderBy('s.open_time')
             ->get();
-
+        // dd($jadwal);
         /*
     |--------------------------------------------------------------------------
     | 2️⃣ KUNJUNGAN PER POLI (BULANAN)
@@ -189,7 +211,34 @@ class DashController extends Controller
             ->where('status_batal', 0)
             ->where('first_regstatus', 0)
             ->count();
+        /*
+|--------------------------------------------------------------------------
+| 5️⃣ JENIS PASIEN (BULANAN)
+|--------------------------------------------------------------------------
+*/
 
+        $jenisPasien = DB::table('tr_pxregistrations as r')
+            ->join('patients as p', 'r.patient_id', '=', 'p.id')
+            ->join('patient_types as pt', 'p.patient_typeid', '=', 'pt.id')
+            ->selectRaw('
+        pt.title,
+        COUNT(r.id) as total
+    ')
+            ->whereMonth('r.schedule_date', $bulan)
+            ->whereYear('r.schedule_date', $tahun)
+            ->where('r.status', 1)
+            ->where('r.status_batal', 0)
+            ->groupBy('pt.title')
+            ->pluck('total', 'pt.title');
+
+        $asuransi     = $jenisPasien['ASURANSI'] ?? 0;
+        $bpjsNonPbi   = $jenisPasien['BPJS NON PBI'] ?? 0;
+        $bpjsPbi      = $jenisPasien['BPJS PBI'] ?? 0;
+        $bpjsUhc      = $jenisPasien['BPJS UHC'] ?? 0;
+        $jpk          = $jenisPasien['JPK'] ?? 0;
+        $pegawai      = $jenisPasien['PEGAWAI'] ?? 0;
+        $spm          = $jenisPasien['SPM'] ?? 0;
+        $umum         = $jenisPasien['UMUM'] ?? 0;
         /*
     |--------------------------------------------------------------------------
     | RETURN VIEW
@@ -203,37 +252,68 @@ class DashController extends Controller
             'pasienBaru',
             'pasienLama',
             'bulan',
-            'tahun'
+            'tahun',
+            'asuransi',
+            'bpjsNonPbi',
+            'bpjsPbi',
+            'bpjsUhc',
+            'jpk',
+            'pegawai',
+            'spm',
+            'umum',
+            'tanggalMulai',
+            'tanggalSelesai'
         ));
     }
     public function getJadwalDokter(Request $request)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | TANGGAL FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+
+            $tanggalMulai   = Carbon::parse($request->start_date)->startOfDay();
+            $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
+        } else {
+
+            $tanggalMulai   = Carbon::today()->startOfDay();
+            $tanggalSelesai = Carbon::today()->endOfDay();
+        }
+
         $query = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
 
-            // 🔥 Tambah join pasien
-            ->leftJoin('tr_pxregistrations as r', function ($join) {
-                $join->on('r.schedule_id', '=', 's.id')
-                    ->where('r.status_batal', 0);
+            ->leftJoin('tr_pxregistrations as r', function ($join) use ($tanggalMulai, $tanggalSelesai) {
+
+                $join->on('r.section_id', '=', 's.section_id')
+                    ->on('r.dokter_id', '=', 's.dokter_id')
+                    ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
+                    ->where('r.status', 1);
             })
 
-            ->selectRaw('
-            s.id,
-            s.title as nama_dokter,
-            u.name,
-            sec.code,
-            sec.prefix,
-            sec.title as nama_poli,
-            s.kodesubspesialis,
-            s.date,
-            s.open_time,
-            s.closed_time,
-            s.kuotajkn,
-            s.kuotanonjkn,
-            s.kapasitaspasien,
-            COUNT(r.id) as total_pasien
-        ')
+            ->leftJoin('patients as p', 'r.patient_id', '=', 'p.id')
+            ->leftJoin('patient_types as pt', 'r.type_id', '=', 'pt.id')
+
+            ->select([
+                's.id',
+                's.title as nama_dokter',
+                'u.name',
+                'sec.code',
+                'sec.prefix',
+                'sec.title as nama_poli',
+                's.kodesubspesialis',
+                's.date',
+                's.open_time',
+                's.closed_time',
+                's.kuotajkn',
+                's.kuotanonjkn',
+                's.kapasitaspasien',
+                DB::raw('COUNT(r.id) as total_pasien')
+            ])
 
             ->groupBy(
                 's.id',
@@ -253,24 +333,19 @@ class DashController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | DEFAULT: HARI INI
+    | FILTER TANGGAL JADWAL
     |--------------------------------------------------------------------------
     */
+
         if (!$request->filled('start_date') && !$request->filled('end_date')) {
+
             $query->whereDate('s.date', Carbon::today());
-        }
+        } else {
 
-        /*
-    |--------------------------------------------------------------------------
-    | FILTER RANGE TANGGAL
-    |--------------------------------------------------------------------------
-    */
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-
-            $start = Carbon::parse($request->start_date)->startOfDay();
-            $end   = Carbon::parse($request->end_date)->endOfDay();
-
-            $query->whereBetween('s.date', [$start, $end]);
+            $query->whereBetween('s.date', [
+                Carbon::parse($request->start_date)->toDateString(),
+                Carbon::parse($request->end_date)->toDateString()
+            ]);
         }
 
         return DataTables::of($query)
@@ -278,32 +353,34 @@ class DashController extends Controller
             ->addIndexColumn()
 
             ->editColumn('date', function ($row) {
+
                 return $row->date
                     ? Carbon::parse($row->date)->translatedFormat('l') . '<br>' .
                     Carbon::parse($row->date)->translatedFormat('d F Y')
                     : '-';
             })
-            ->rawColumns(['date'])
 
             ->editColumn('open_time', function ($row) {
+
                 return $row->open_time
                     ? Carbon::parse($row->open_time)->format('H:i')
                     : '-';
             })
 
             ->editColumn('closed_time', function ($row) {
+
                 return $row->closed_time
                     ? Carbon::parse($row->closed_time)->format('H:i')
                     : '-';
             })
 
-            // 🔥 TAMBAH KOLOM KUOTA PROGRESS
             ->addColumn('kuota_progress', function ($row) {
 
-                $kapasitas = $row->kapasitaspasien ?? 0;
-                $terisi = $row->total_pasien ?? 0;
+                $kapasitas = (int) ($row->kapasitaspasien ?? 0);
+                $terisi = (int) ($row->total_pasien ?? 0);
 
                 $persen = $kapasitas > 0 ? round(($terisi / $kapasitas) * 100) : 0;
+                $persen = min($persen, 100);
 
                 $warna = 'bg-success';
 
@@ -314,18 +391,18 @@ class DashController extends Controller
                 }
 
                 return '
-                <div style="min-width:130px">
-                    <div class="fw-semibold mb-1">
-                        ' . $terisi . ' / ' . $kapasitas . '
-                    </div>
-                    <div class="progress" style="height:6px;">
-                        <div class="progress-bar ' . $warna . '"
-                            style="width: ' . $persen . '%">
-                        </div>
+            <div style="min-width:130px">
+                <div class="fw-semibold mb-1">
+                    ' . $terisi . ' / ' . $kapasitas . '
+                </div>
+                <div class="progress" style="height:6px;">
+                    <div class="progress-bar ' . $warna . '"
+                        style="width: ' . $persen . '%">
                     </div>
                 </div>
-            ';
+            </div>';
             })
+
             ->rawColumns(['date', 'kuota_progress'])
 
             ->make(true);
