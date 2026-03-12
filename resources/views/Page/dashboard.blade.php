@@ -106,7 +106,62 @@
 
             {{-- ================== ROW 2 ================== --}}
             <div class="row mt-3">
+                {{-- JENIS PASIEN BULANAN --}}
+                <div class="col-xl-12">
+                    <div class="card">
+                        <div class="card-body">
 
+                            <h5 class="mb-4">
+                                Jenis Pasien Bulan
+                                {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
+                                {{ $tahun }}
+                            </h5>
+
+                            @php
+                                $dataJenis = [
+                                    'ASURANSI' => $asuransi,
+                                    'BPJS NON PBI' => $bpjsNonPbi,
+                                    'BPJS PBI' => $bpjsPbi,
+                                    'BPJS UHC' => $bpjsUhc,
+                                    'JPK' => $jpk,
+                                    'PEGAWAI' => $pegawai,
+                                    'SPM' => $spm,
+                                    'UMUM' => $umum,
+                                ];
+
+                                $totalJenis = array_sum($dataJenis);
+                            @endphp
+
+                            <div class="row">
+
+                                @foreach ($dataJenis as $label => $value)
+                                    <div class="col-md-3 col-sm-6 mb-3">
+                                        <div class="border rounded p-3 text-center h-100">
+
+                                            <div class="text-muted small mb-1">
+                                                {{ $label }}
+                                            </div>
+
+                                            <div class="fs-4 fw-bold">
+                                                {{ number_format($value) }}
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                            </div>
+
+                            <div class="mt-3 pt-3 border-top d-flex justify-content-between">
+                                <span class="fw-semibold">Total Semua Jenis</span>
+                                <span class="fw-bold fs-5">
+                                    {{ number_format($totalJenis) }}
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
                 {{-- STATISTIK BULANAN --}}
                 <div class="col-xl-4">
                     <div class="card">
@@ -145,10 +200,39 @@
                     <div class="card">
                         <div class="card-body">
 
-                            <h5 class="mb-3">Jadwal Dokter Hari Ini</h5>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                <h5 class="mb-0">
+                                    Jadwal Dokter
+                                    <small class="text-muted">
+                                        {{ $tanggalMulai->format('d M Y') }}
+                                        -
+                                        {{ $tanggalSelesai->format('d M Y') }}
+                                    </small>
+                                </h5>
+
+                                <form method="GET" class="d-flex gap-2">
+
+                                    <input type="date" name="tanggal_mulai"
+                                        value="{{ request('tanggal_mulai', $tanggalMulai->format('Y-m-d')) }}"
+                                        class="form-control form-control-sm">
+
+                                    <input type="date" name="tanggal_selesai"
+                                        value="{{ request('tanggal_selesai', $tanggalSelesai->format('Y-m-d')) }}"
+                                        class="form-control form-control-sm">
+
+                                    <button class="btn btn-primary btn-sm">
+                                        Filter
+                                    </button>
+
+                                </form>
+
+                            </div>
 
                             <div class="table-responsive">
+
                                 <table class="table table-hover align-middle">
+
                                     <thead class="table-light">
                                         <tr>
                                             <th>#</th>
@@ -159,50 +243,85 @@
                                             <th>Status</th>
                                         </tr>
                                     </thead>
+
                                     <tbody>
+
                                         @forelse ($jadwal as $index => $item)
                                             @php
-                                                $kapasitas = $item->kapasitaspasien ?? 0;
-                                                $terisi = $item->total_pasien ?? 0;
-                                                $persen = $kapasitas > 0 ? ($terisi / $kapasitas) * 100 : 0;
+                                                $kapasitas = (int) ($item->kapasitaspasien ?? 0);
+                                                $terisi = (int) ($item->total_pasien ?? 0);
+
+                                                $persen = $kapasitas > 0 ? round(($terisi / $kapasitas) * 100) : 0;
+                                                $persen = min($persen, 100);
+
+                                                if ($persen >= 100) {
+                                                    $warna = 'bg-danger';
+                                                    $status = 'Penuh';
+                                                    $badge = 'bg-danger';
+                                                } elseif ($persen >= 80) {
+                                                    $warna = 'bg-warning';
+                                                    $status = 'Hampir Penuh';
+                                                    $badge = 'bg-warning text-dark';
+                                                } else {
+                                                    $warna = 'bg-success';
+                                                    $status = 'Tersedia';
+                                                    $badge = 'bg-success';
+                                                }
                                             @endphp
 
                                             <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td><strong>{{ $item->name }}</strong></td>
-                                                <td>{{ $item->nama_poli }}</td>
-                                                <td>{{ $item->open_time }} - {{ $item->closed_time }}</td>
 
-                                                <td style="min-width:130px">
-                                                    <div class="small fw-semibold mb-1">
-                                                        {{ $terisi }} / {{ $kapasitas }}
-                                                    </div>
-                                                    <div class="progress" style="height:6px;">
-                                                        <div class="progress-bar
-                                                    {{ $persen >= 100 ? 'bg-danger' : ($persen >= 80 ? 'bg-warning' : 'bg-success') }}"
-                                                            style="width: {{ $persen }}%">
-                                                        </div>
-                                                    </div>
+                                                <td>{{ $index + 1 }}</td>
+
+                                                <td>
+                                                    <strong>{{ $item->nama_dokter ?? '-' }}</strong>
                                                 </td>
 
                                                 <td>
-                                                    @if ($terisi < $kapasitas)
-                                                        <span class="badge bg-success">Tersedia</span>
-                                                    @else
-                                                        <span class="badge bg-danger">Penuh</span>
-                                                    @endif
+                                                    {{ $item->nama_poli ?? '-' }}
                                                 </td>
+
+                                                <td>
+                                                    {{ \Carbon\Carbon::parse($item->open_time)->format('H:i') }}
+                                                    -
+                                                    {{ \Carbon\Carbon::parse($item->closed_time)->format('H:i') }}
+                                                </td>
+
+                                                <td style="min-width:150px">
+
+                                                    <div class="small fw-semibold mb-1">
+                                                        {{ $terisi }} / {{ $kapasitas }}
+                                                    </div>
+
+                                                    <div class="progress" style="height:6px;">
+                                                        <div class="progress-bar {{ $warna }}"
+                                                            style="width: {{ $persen }}%">
+                                                        </div>
+                                                    </div>
+
+                                                </td>
+
+                                                <td>
+                                                    <span class="badge {{ $badge }}">
+                                                        {{ $status }}
+                                                    </span>
+                                                </td>
+
                                             </tr>
 
                                         @empty
+
                                             <tr>
                                                 <td colspan="6" class="text-center text-muted">
-                                                    Tidak ada jadwal hari ini
+                                                    Tidak ada jadwal pada periode ini
                                                 </td>
                                             </tr>
                                         @endforelse
+
                                     </tbody>
+
                                 </table>
+
                             </div>
 
                         </div>
