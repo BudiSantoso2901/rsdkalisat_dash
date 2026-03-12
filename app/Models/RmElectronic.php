@@ -46,7 +46,8 @@ class RmElectronic extends Model
         'pdf_created',
         'pdf_updated',
         'status_publish',
-        'date_publish'
+        'date_publish',
+        'penjamin'
     ];
 
     protected $casts = [

@@ -70,4 +70,8 @@ class tr_pxregistrations extends Model
     {
         return $this->belongsTo(User::class, 'dokter_id', 'id');
     }
+    public function patient()
+    {
+        return $this->belongsTo(Patient::class, 'patient_id', 'id');
+    }
 }
