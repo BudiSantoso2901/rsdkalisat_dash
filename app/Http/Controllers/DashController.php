@@ -470,6 +470,23 @@ class DashController extends Controller
 
             ->where('t.status', 1)
 
+            /*
+        |--------------------------------------------------------------------------
+        | HILANGKAN POLI LAB & RADIOLOGI
+        |--------------------------------------------------------------------------
+        */
+
+            ->where(function ($q) {
+                $q->where('s3.title', 'not like', '%LAB%')
+                    ->where('s3.title', 'not like', '%RADIOLOGI%');
+            })
+
+            /*
+        |--------------------------------------------------------------------------
+        | FILTER TANGGAL
+        |--------------------------------------------------------------------------
+        */
+
             ->whereBetween('t.checkout_date', [
                 $tanggalMulai,
                 $tanggalSelesai
@@ -500,7 +517,7 @@ class DashController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | SEARCH GLOBAL (ANTI ERROR)
+        | GLOBAL SEARCH (AMAN UNTUK ALIAS KOLOM)
         |--------------------------------------------------------------------------
         */
 
@@ -539,12 +556,14 @@ class DashController extends Controller
                     : '-';
             })
 
+
             ->editColumn('checkout_date', function ($row) {
 
                 return $row->checkout_date
                     ? Carbon::parse($row->checkout_date)->format('d-m-Y H:i')
                     : '-';
             })
+
 
             ->editColumn('bayar_date', function ($row) {
 

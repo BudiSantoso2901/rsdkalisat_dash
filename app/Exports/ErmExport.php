@@ -15,13 +15,16 @@ class ErmExport implements FromCollection, WithHeadings
     public function __construct($start, $end, $jenis)
     {
         $this->start = $start;
-        $this->end = $end;
+        $this->end   = $end;
         $this->jenis = $jenis;
     }
+
     public function collection()
     {
-        return DB::table('tr_pxregistrations as t')
+        $query = DB::table('tr_pxregistrations as t')
+
             ->select(
+
                 't.checkout_date',
                 't.reg_date',
                 't.selesai_date',
@@ -90,8 +93,8 @@ class ErmExport implements FromCollection, WithHeadings
 
                 DB::raw("
                     CASE
-                        WHEN t.bpjs_sep IS NOT NULL
-                        AND t.rm_diagnosa IS NOT NULL
+                        WHEN t.bpjs_sep IS NOT NULL AND t.bpjs_sep <> ''
+                        AND t.rm_diagnosa IS NOT NULL AND t.rm_diagnosa <> ''
                         AND t.rm_closing_date IS NOT NULL
                         AND t.bayar_date IS NOT NULL
                         AND t.farmasi_panggil_time IS NOT NULL
@@ -102,25 +105,55 @@ class ErmExport implements FromCollection, WithHeadings
                     END AS status_erm
                 ")
             )
+
             ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
             ->join('patients as p', 't.patient_id', '=', 'p.id')
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
+
             ->where('t.status', 1)
+
+            /*
+            |--------------------------------------------------------------------------
+            | HILANGKAN POLI LAB & RADIOLOGI
+            |--------------------------------------------------------------------------
+            */
+
+            ->where(function ($q) {
+                $q->where('s3.title', 'not like', '%LAB%')
+                    ->where('s3.title', 'not like', '%RADIOLOGI%');
+            })
+
+            /*
+            |--------------------------------------------------------------------------
+            | FILTER TANGGAL
+            |--------------------------------------------------------------------------
+            */
+
             ->whereBetween('t.checkout_date', [
                 $this->start . ' 00:00:00',
                 $this->end . ' 23:59:59'
             ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | FILTER JENIS PASIEN
+            |--------------------------------------------------------------------------
+            */
+
             ->when($this->jenis, function ($q) {
                 $q->where('pt.title', $this->jenis);
             })
-            ->orderBy('t.reg_date')
-            ->get();
+
+            ->orderBy('t.reg_date', 'ASC');
+
+        return $query->get();
     }
 
     public function headings(): array
     {
         return [
+
             'Checkout Date',
             'Reg Date',
             'Selesai Date',
