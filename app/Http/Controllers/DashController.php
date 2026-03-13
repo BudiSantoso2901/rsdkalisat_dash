@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ErmExport;
 use App\Models\tr_pxregistrations;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 use Yajra\DataTables\Facades\DataTables;
+
 
 class DashController extends Controller
 {
@@ -407,36 +410,136 @@ class DashController extends Controller
 
             ->make(true);
     }
-    // public function getData(Request $request)
-    // {
-    //     $query = tr_pxregistrations::select([
-    //         'nama_px',
-    //         'nik',
-    //         'bpjs_sep',
-    //         'reg_date',
-    //         'reg_time',
-    //         'section_id',
-    //         'dokter_id',
-    //         'status_selesai'
-    //     ]);
+    public function view_kunjungan_poli()
+    {
+        return view('Page.kunjungan_poli');
+    }
+    public function getKunjunganPoli(Request $request)
+    {
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER TANGGAL
+    |--------------------------------------------------------------------------
+    */
 
-    //     return DataTables::of($query)
+        if ($request->filled('start_date') && $request->filled('end_date')) {
 
-    //         ->addIndexColumn() // untuk kolom No
+            $tanggalMulai = Carbon::parse($request->start_date)->startOfDay();
+            $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
+        } else {
 
-    //         ->editColumn('status_selesai', function ($row) {
-    //             if ($row->status_selesai == 1) {
-    //                 return '<span class="badge bg-success">Selesai</span>';
-    //             } else {
-    //                 return '<span class="badge bg-warning">Proses</span>';
-    //             }
-    //         })
+            // default hari ini
+            $tanggalMulai = Carbon::today()->startOfDay();
+            $tanggalSelesai = Carbon::today()->endOfDay();
+        }
 
-    //         ->editColumn('reg_date', function ($row) {
-    //             return \Carbon\Carbon::parse($row->reg_date)->format('d-m-Y');
-    //         })
+        /*
+    |--------------------------------------------------------------------------
+    | QUERY UTAMA
+    |--------------------------------------------------------------------------
+    */
 
-    //         ->rawColumns(['status_selesai'])
-    //         ->make(true);
-    // }
+        $query = DB::table('tr_pxregistrations as t')
+            ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
+            ->join('patients as p', 't.patient_id', '=', 'p.id')
+            ->join('users as u', 't.dokter_id', '=', 'u.id')
+            ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
+
+            ->select(
+                't.checkout_date',
+                't.reg_date',
+                't.selesai_date',
+                't.numb as no_registrasi',
+                't.inpatient_status',
+                'u.name as nama_dokter',
+                't.status_batal',
+                's3.title as ruangan',
+                'p.nrm',
+                'p.name',
+                'pt.title as penjamin',
+                't.bpjs_sep',
+                't.bayar_date',
+                't.checkout_date',
+                't.source_reg',
+                't.rm_diagnosa',
+                't.rm_kodediagnosa',
+                't.rm_closing_date',
+                't.id',
+                't.biaya'
+            )
+
+            ->where('t.status', 1)
+
+            ->whereBetween('t.checkout_date', [
+                $tanggalMulai,
+                $tanggalSelesai
+            ]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER JENIS PASIEN
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('jenis_pasien')) {
+
+            $query->where('pt.title', $request->jenis_pasien);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | DATATABLES
+    |--------------------------------------------------------------------------
+    */
+
+        return DataTables::of($query)
+
+            ->addIndexColumn()
+
+            ->editColumn('reg_date', function ($row) {
+
+                return $row->reg_date
+                    ? Carbon::parse($row->reg_date)->format('d-m-Y H:i')
+                    : '-';
+            })
+
+            ->editColumn('bayar_date', function ($row) {
+
+                return $row->bayar_date
+                    ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
+                    : '-';
+            })
+
+            ->editColumn('checkout_date', function ($row) {
+
+                return $row->checkout_date
+                    ? Carbon::parse($row->checkout_date)->format('d-m-Y H:i')
+                    : '-';
+            })
+
+            ->editColumn('status_batal', function ($row) {
+
+                if ($row->status_batal == 1) {
+                    return '<span class="badge bg-danger">Batal</span>';
+                }
+
+                return '<span class="badge bg-success">Aktif</span>';
+            })
+
+            ->rawColumns(['status_batal'])
+
+            ->make(true);
+    }
+    public function exportExcel(Request $request)
+    {
+
+        $start = $request->start_date;
+        $end   = $request->end_date;
+        $jenis = $request->jenis_pasien;
+
+        return Excel::download(
+            new ErmExport($start, $end, $jenis),
+            'kunjungan_poli.xlsx'
+        );
+    }
 }

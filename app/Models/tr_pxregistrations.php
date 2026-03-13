@@ -44,6 +44,8 @@ class tr_pxregistrations extends Model
         'status_bayar',
         'created_by',
         'updated_by',
+        'biaya',
+        'checkout_date',
 
     ];
 
