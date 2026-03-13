@@ -181,7 +181,7 @@
                     },
 
                     {
-                        data: 'name'
+                        data: 'nama_pasien'
                     },
 
                     {

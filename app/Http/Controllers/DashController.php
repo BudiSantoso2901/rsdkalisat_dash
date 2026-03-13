@@ -416,6 +416,7 @@ class DashController extends Controller
     }
     public function getKunjunganPoli(Request $request)
     {
+
         /*
     |--------------------------------------------------------------------------
     | FILTER TANGGAL
@@ -424,14 +425,14 @@ class DashController extends Controller
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
 
-            $tanggalMulai = Carbon::parse($request->start_date)->startOfDay();
+            $tanggalMulai   = Carbon::parse($request->start_date)->startOfDay();
             $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
         } else {
 
-            // default hari ini
-            $tanggalMulai = Carbon::today()->startOfDay();
+            $tanggalMulai   = Carbon::today()->startOfDay();
             $tanggalSelesai = Carbon::today()->endOfDay();
         }
+
 
         /*
     |--------------------------------------------------------------------------
@@ -446,6 +447,7 @@ class DashController extends Controller
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
 
             ->select(
+                't.id',
                 't.checkout_date',
                 't.reg_date',
                 't.selesai_date',
@@ -455,16 +457,14 @@ class DashController extends Controller
                 't.status_batal',
                 's3.title as ruangan',
                 'p.nrm',
-                'p.name',
+                'p.name as nama_pasien',
                 'pt.title as penjamin',
                 't.bpjs_sep',
                 't.bayar_date',
-                't.checkout_date',
                 't.source_reg',
                 't.rm_diagnosa',
                 't.rm_kodediagnosa',
                 't.rm_closing_date',
-                't.id',
                 't.biaya'
             )
 
@@ -474,6 +474,7 @@ class DashController extends Controller
                 $tanggalMulai,
                 $tanggalSelesai
             ]);
+
 
         /*
     |--------------------------------------------------------------------------
@@ -486,6 +487,7 @@ class DashController extends Controller
             $query->where('pt.title', $request->jenis_pasien);
         }
 
+
         /*
     |--------------------------------------------------------------------------
     | DATATABLES
@@ -496,17 +498,44 @@ class DashController extends Controller
 
             ->addIndexColumn()
 
+            /*
+        |--------------------------------------------------------------------------
+        | SEARCH GLOBAL (ANTI ERROR)
+        |--------------------------------------------------------------------------
+        */
+
+            ->filter(function ($query) use ($request) {
+
+                if ($request->has('search')) {
+
+                    $search = $request->get('search')['value'];
+
+                    if ($search != '') {
+
+                        $query->where(function ($q) use ($search) {
+
+                            $q->where('p.name', 'like', "%{$search}%")
+                                ->orWhere('p.nrm', 'like', "%{$search}%")
+                                ->orWhere('u.name', 'like', "%{$search}%")
+                                ->orWhere('s3.title', 'like', "%{$search}%")
+                                ->orWhere('pt.title', 'like', "%{$search}%")
+                                ->orWhere('t.numb', 'like', "%{$search}%");
+                        });
+                    }
+                }
+            })
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | FORMAT TANGGAL
+        |--------------------------------------------------------------------------
+        */
+
             ->editColumn('reg_date', function ($row) {
 
                 return $row->reg_date
                     ? Carbon::parse($row->reg_date)->format('d-m-Y H:i')
-                    : '-';
-            })
-
-            ->editColumn('bayar_date', function ($row) {
-
-                return $row->bayar_date
-                    ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
                     : '-';
             })
 
@@ -517,14 +546,30 @@ class DashController extends Controller
                     : '-';
             })
 
+            ->editColumn('bayar_date', function ($row) {
+
+                return $row->bayar_date
+                    ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
+                    : '-';
+            })
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | STATUS BATAL
+        |--------------------------------------------------------------------------
+        */
+
             ->editColumn('status_batal', function ($row) {
 
                 if ($row->status_batal == 1) {
+
                     return '<span class="badge bg-danger">Batal</span>';
                 }
 
                 return '<span class="badge bg-success">Aktif</span>';
             })
+
 
             ->rawColumns(['status_batal'])
 
