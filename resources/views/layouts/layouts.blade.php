@@ -26,6 +26,9 @@
     <!-- icons -->
     <link href="{{ asset('assets/css/icons.min.css') }}" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+
+
 
 </head>
 
@@ -70,6 +73,7 @@
     <script src="{{ asset('assets/libs/jquery.counterup/jquery.counterup.min.js') }}"></script>
     <script src="{{ asset('assets/libs/feather-icons/feather.min.js') }}"></script>
 
+
     <!-- knob plugin -->
     <script src="{{ asset('assets/libs/jquery-knob/jquery.knob.min.js') }}"></script>
     {{-- flot chart js  --}}
@@ -99,6 +103,9 @@
     <script src="{{ asset('assets/libs/pdfmake/build/pdfmake.min.js') }}"></script>
     <script src="{{ asset('assets/libs/pdfmake/build/vfs_fonts.js') }}"></script>
     <!-- third party js ends -->
+    <!-- Date Range Picker -->
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <!-- App js-->
     <script src="{{ asset('assets/js/app.min.js') }}"></script>
     @stack('script')

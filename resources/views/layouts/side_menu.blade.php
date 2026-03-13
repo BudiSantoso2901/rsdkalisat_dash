@@ -29,6 +29,12 @@
                         <span>Pasien</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('kunjungan_poli') }}">
+                        <i class="mdi mdi-chart-bar"></i>
+                        <span>Kunjungan Poli</span>
+                    </a>
+                </li>
             </ul>
 
         </div>
