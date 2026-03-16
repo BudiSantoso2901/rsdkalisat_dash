@@ -46,6 +46,7 @@ class tr_pxregistrations extends Model
         'updated_by',
         'biaya',
         'checkout_date',
+        'parent_id'
 
     ];
 
