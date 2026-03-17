@@ -707,7 +707,13 @@ class DashController extends Controller
 
         if ($request->filled('jenis_pasien')) {
 
-            $query->where('pt.title', $request->jenis_pasien);
+            $jenis = $request->jenis_pasien;
+
+            if (!is_array($jenis)) {
+                $jenis = explode(',', $jenis);
+            }
+
+            $query->whereIn('pt.title', $jenis);
         }
 
 

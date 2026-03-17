@@ -56,8 +56,7 @@
 
                                 <div class="col-md-3">
                                     <label>Jenis Pasien</label>
-                                    <select id="jenis_pasien" class="form-control">
-                                        <option value="">Semua</option>
+                                    <select id="jenis_pasien" name="jenis_pasien[]" multiple>
                                         <option value="ASURANSI">ASURANSI</option>
                                         <option value="BPJS NON PBI">BPJS NON PBI</option>
                                         <option value="BPJS PBI">BPJS PBI</option>
@@ -151,7 +150,16 @@
                 endDate: moment()
 
             });
-
+            $('.select2').select2({
+                placeholder: "Cari poli...",
+                allowClear: true,
+                width: '100%'
+            });
+            new MultiSelectTag('jenis_pasien', {
+                rounded: true,
+                shadow: true,
+                placeholder: 'Pilih Jenis Pasien'
+            })
 
             /*
             |--------------------------------------------------------------------------
@@ -286,9 +294,11 @@
             */
 
             $('#reset').click(function() {
+
                 $('#jenis_kunjungan').val('');
-                $('#jenis_pasien').val('');
-                $('#ruangan').val('');
+                $('#jenis_pasien').val([]);
+                $('#ruangan').val('').trigger('change');
+
                 $('#tanggal_range').data('daterangepicker').setStartDate(moment());
                 $('#tanggal_range').data('daterangepicker').setEndDate(moment());
 
@@ -331,11 +341,6 @@
             });
 
 
-        });
-        $('.select2').select2({
-            placeholder: "Cari poli...",
-            allowClear: true,
-            width: '100%'
         });
     </script>
 @endpush
