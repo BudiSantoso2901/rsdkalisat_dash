@@ -694,7 +694,7 @@ class DashController extends Controller
 
             $query->whereBetween('t.reg_date', [$tanggalMulai, $tanggalSelesai])
                 ->where('t.inpatient_status', 0)
-                ->where('s3.title', 'IGD 24 JAM')
+                ->whereIn('s3.title', ['IGD 24 JAM', 'PONEK'])
                 ->orderBy('t.reg_date', 'asc');
         }
 
