@@ -99,6 +99,7 @@
 
                                         <tr>
                                             <th width="5%">No</th>
+                                            <th>Checkout Date</th>
                                             <th>Schedule Date</th>
                                             <th>Tanggal Registrasi</th>
                                             <th>Tanggal Selesai</th>
@@ -201,6 +202,9 @@
                         data: 'DT_RowIndex',
                         orderable: false,
                         searchable: false
+                    },
+                    {
+                        data: 'checkout_date'
                     },
                     {
                         data: 'schedule_date'
