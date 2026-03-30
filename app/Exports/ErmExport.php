@@ -36,7 +36,7 @@ class ErmExport implements FromCollection, WithHeadings
             ->select(
                 't.checkout_date',
                 't.schedule_date',
-                't.parent_id',
+                't.inpatient_status',
                 't.bpjs_sep',
                 't.reg_date',
                 't.selesai_date',
@@ -159,7 +159,7 @@ class ErmExport implements FromCollection, WithHeadings
         return [
             'Checkout Date',
             'Schedule Date',
-            'Parent ID',
+            'Inpatient ID',
             'No SEP',
             'Reg Date',
             'Selesai Date',
