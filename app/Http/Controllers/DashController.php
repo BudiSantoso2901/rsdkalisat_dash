@@ -416,7 +416,14 @@ class DashController extends Controller
             ->where('title', '!=', 'IGD 24 JAM')
             ->orderBy('title', 'asc')
             ->get();
-        return view('Page.kunjungan_poli', compact('ruangan'));
+
+        // 🔥 TAMBAHAN QUERY DOKTER
+        $dokter = DB::table('users')
+            ->whereNotNull('name')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return view('Page.kunjungan_poli', compact('ruangan', 'dokter'));
     }
     // public function getKunjunganPoli(Request $request)
     // {
@@ -715,7 +722,23 @@ class DashController extends Controller
 
             $query->whereIn('pt.title', $jenis);
         }
+        /*
+|--------------------------------------------------------------------------
+| FILTER DOKTER
+|--------------------------------------------------------------------------
+*/
 
+        if ($request->filled('dokter')) {
+
+            $dokter = $request->dokter;
+
+            // support multi select (array atau string "1,2,3")
+            if (!is_array($dokter)) {
+                $dokter = explode(',', $dokter);
+            }
+
+            $query->whereIn('t.dokter_id', $dokter);
+        }
 
         /*
     |--------------------------------------------------------------------------
@@ -836,9 +859,10 @@ class DashController extends Controller
         $jenis = $request->jenis_pasien;
         $ruangan = $request->ruangan;
         $jenis_kunjungan = $request->jenis_kunjungan;
+        $dokter = $request->dokter;
 
         return Excel::download(
-            new ErmExport($start, $end, $jenis, $ruangan, $jenis_kunjungan),
+            new ErmExport($start, $end, $jenis, $ruangan, $jenis_kunjungan, $dokter),
             'kunjungan_poli.xlsx'
         );
     }

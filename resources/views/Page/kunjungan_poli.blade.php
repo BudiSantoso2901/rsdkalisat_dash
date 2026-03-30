@@ -28,9 +28,9 @@
                             </h4>
 
                             {{-- ================= FILTER ================= --}}
-                            <div class="row mb-3">
+                            <div class="row mb-4">
 
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label>Jenis Kunjungan</label>
                                     <select id="jenis_kunjungan" class="form-control">
                                         <option value="rajal">Rawat Jalan</option>
@@ -39,12 +39,12 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label>Tanggal Kunjungan</label>
                                     <input type="text" id="tanggal_range" class="form-control">
                                 </div>
 
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label>Ruangan</label>
                                     <select id="ruangan" class="form-control select2">
                                         <option value="">Semua</option>
@@ -54,7 +54,7 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label>Jenis Pasien</label>
                                     <select id="jenis_pasien" name="jenis_pasien[]" multiple>
                                         <option value="ASURANSI">ASURANSI</option>
@@ -67,12 +67,20 @@
                                         <option value="UMUM">UMUM</option>
                                     </select>
                                 </div>
-
+                                <div class="col-md-4">
+                                    <label>Dokter</label>
+                                    <select id="dokter" class="form-control select2">
+                                        <option value="">Semua</option>
+                                        @foreach ($dokter as $d)
+                                            <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
 
-                            <div class="row mb-4">
+                            <div class="row mb-3">
 
-                                <div class="col-md-12 d-flex gap-2">
+                                <div class="col-md-3 d-flex gap-2">
 
                                     <button id="filter" class="btn btn-primary">
                                         Filter
@@ -192,6 +200,7 @@
                         d.jenis_kunjungan = $('#jenis_kunjungan').val();
                         d.jenis_pasien = $('#jenis_pasien').val();
                         d.ruangan = $('#ruangan').val();
+                        d.dokter = $('#dokter').val();
 
                     }
                 },
@@ -302,6 +311,7 @@
                 $('#jenis_kunjungan').val('');
                 $('#jenis_pasien').val([]);
                 $('#ruangan').val('').trigger('change');
+                $('#dokter').val('').trigger('change');
 
                 $('#tanggal_range').data('daterangepicker').setStartDate(moment());
                 $('#tanggal_range').data('daterangepicker').setEndDate(moment());
@@ -316,7 +326,7 @@
             */
 
             $('#export_excel').click(function() {
-
+                let dokter = $('#dokter').val();
                 let range = $('#tanggal_range').val();
                 let jenis_pasien = $('#jenis_pasien').val();
                 let ruangan = $('#ruangan').val();
@@ -338,7 +348,8 @@
                     "&end_date=" + end +
                     "&jenis_pasien=" + jenis_pasien +
                     "&ruangan=" + ruangan +
-                    "&jenis_kunjungan=" + jenis_kunjungan;
+                    "&jenis_kunjungan=" + jenis_kunjungan +
+                    "&dokter=" + dokter;
 
                 window.open(url, '_blank');
 

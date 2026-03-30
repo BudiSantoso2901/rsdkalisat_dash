@@ -40,74 +40,58 @@
                     </form>
                 </div>
             </div>
-
-
-            {{-- ================== ROW 1 ================== --}}
-            <div class="row">
-
-                {{-- RAWAT JALAN VS RAWAT INAP --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
-
-                            <div class="mb-2">
-                                <i class="bi bi-hospital fs-2 text-primary"></i>
-                            </div>
-
-                            <h5 class="fw-semibold">
-                                Rawat Jalan dan Rawat Inap
-                            </h5>
-
-                            <canvas id="chartRawat"></canvas>
-                        </div>
-                    </div>
-                </div>
-
+            <div class="row g-3">
 
                 {{-- KUNJUNGAN PER POLI --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body p-3">
 
-                            <div class="mb-2">
-                                <i class="bi bi-clipboard2-pulse fs-2 text-success"></i>
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="bi bi-clipboard2-pulse fs-5 text-success me-2"></i>
+                                <h6 class="mb-0 fw-semibold">
+                                    Kunjungan Per Poli
+                                </h6>
                             </div>
 
-                            <h5 class="fw-semibold">
-                                Kunjungan Per Poli
-                            </h5>
+                            <div class="d-flex justify-content-center">
+                                <div style="width: 100%; max-width: 500px; height: 280px;">
+                                    <canvas id="chartPoli"></canvas>
+                                </div>
+                            </div>
 
-                            <canvas id="chartPoli"></canvas>
                         </div>
                     </div>
                 </div>
 
 
                 {{-- PASIEN BARU VS LAMA --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body p-3">
 
-                            <div class="mb-2">
-                                <i class="bi bi-people-fill fs-2 text-warning"></i>
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="bi bi-people-fill fs-5 text-warning me-2"></i>
+                                <h6 class="mb-0 fw-semibold">
+                                    Pasien Baru & Lama
+                                </h6>
                             </div>
 
-                            <h5 class="fw-semibold">
-                                Pasien Baru dan Pasien Lama
-                            </h5>
+                            <div class="d-flex justify-content-center">
+                                <div style="width: 100%; max-width: 300px; height: 280px;">
+                                    <canvas id="chartPasien"></canvas>
+                                </div>
+                            </div>
 
-                            <canvas id="chartPasien"></canvas>
                         </div>
                     </div>
                 </div>
 
             </div>
-
-
             {{-- ================== ROW 2 ================== --}}
             <div class="row mt-3">
                 {{-- JENIS PASIEN BULANAN --}}
-                <div class="col-xl-12">
+                {{-- <div class="col-xl-12">
                     <div class="card">
                         <div class="card-body">
 
@@ -161,7 +145,7 @@
 
                         </div>
                     </div>
-                </div>
+                </div> --}}
                 {{-- STATISTIK BULANAN --}}
                 <div class="col-xl-4">
                     <div class="card">

@@ -14,14 +14,16 @@ class ErmExport implements FromCollection, WithHeadings
     protected $jenis_pasien;
     protected $ruangan;
     protected $jenis_kunjungan;
+    protected $dokter; // 🔥 TAMBAHAN
 
-    public function __construct($start, $end, $jenis_pasien, $ruangan, $jenis_kunjungan)
+    public function __construct($start, $end, $jenis_pasien, $ruangan, $jenis_kunjungan, $dokter)
     {
         $this->start = $start;
         $this->end   = $end;
         $this->jenis_pasien = $jenis_pasien;
         $this->ruangan = $ruangan;
         $this->jenis_kunjungan = $jenis_kunjungan;
+        $this->dokter = $dokter; // 🔥 TAMBAHAN
     }
 
     public function collection()
@@ -72,20 +74,10 @@ class ErmExport implements FromCollection, WithHeadings
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
 
-            /*
-            |------------------------------------------------------------------
-            | WAJIB SAMA DENGAN DATATABLES
-            |------------------------------------------------------------------
-            */
             ->where('t.status', 1)
             ->where('t.parent_id', 0)
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
 
-            /*
-            |------------------------------------------------------------------
-            | FILTER LAB & RADIOLOGI
-            |------------------------------------------------------------------
-            */
             ->where(function ($q) {
                 $q->where('s3.title', 'not like', '%LAB%')
                     ->where('s3.title', 'not like', '%RADIOLOGI%');
@@ -117,7 +109,7 @@ class ErmExport implements FromCollection, WithHeadings
 
         /*
         |------------------------------------------------------------------
-        | FILTER JENIS PASIEN (SUPPORT MULTI SELECT)
+        | FILTER JENIS PASIEN
         |------------------------------------------------------------------
         */
         if (!empty($this->jenis_pasien)) {
@@ -138,6 +130,22 @@ class ErmExport implements FromCollection, WithHeadings
         */
         if (!empty($this->ruangan)) {
             $query->where('t.section_id', $this->ruangan);
+        }
+
+        /*
+        |------------------------------------------------------------------
+        | FILTER DOKTER 🔥
+        |------------------------------------------------------------------
+        */
+        if (!empty($this->dokter)) {
+
+            $dokter = $this->dokter;
+
+            if (!is_array($dokter)) {
+                $dokter = explode(',', $dokter);
+            }
+
+            $query->whereIn('t.dokter_id', $dokter);
         }
 
         return $query->get();
