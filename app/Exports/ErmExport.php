@@ -36,6 +36,7 @@ class ErmExport implements FromCollection, WithHeadings
             ->select(
                 't.checkout_date',
                 't.schedule_date',
+                't.parent_id',
                 't.bpjs_sep',
                 't.reg_date',
                 't.selesai_date',
@@ -45,6 +46,7 @@ class ErmExport implements FromCollection, WithHeadings
                 'u.name as nama_dokter',
                 's3.title as ruangan',
                 'pt.title as penjamin',
+
 
                 DB::raw("CASE WHEN t.bpjs_sep IS NOT NULL AND t.bpjs_sep <> '' THEN '✔' ELSE '❌' END AS cek_sep"),
                 DB::raw("CASE WHEN t.rm_diagnosa IS NOT NULL AND t.rm_diagnosa <> '' THEN '✔' ELSE '❌' END AS cek_diagnosa"),
@@ -157,6 +159,7 @@ class ErmExport implements FromCollection, WithHeadings
         return [
             'Checkout Date',
             'Schedule Date',
+            'Parent ID',
             'No SEP',
             'Reg Date',
             'Selesai Date',
