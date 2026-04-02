@@ -35,7 +35,7 @@
                                     <select id="jenis_kunjungan" class="form-control">
                                         <option value="rajal">Rawat Jalan</option>
                                         <option value="ranap">Rawat Inap</option>
-                                        <option value="igd">IGD</option>
+                                        <option value="igd">IGD & PONEK</option>
                                     </select>
                                 </div>
 

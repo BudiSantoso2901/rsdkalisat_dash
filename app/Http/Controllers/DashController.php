@@ -94,17 +94,10 @@ class DashController extends Controller
     // }
     public function jadwalDokterHariIni(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | FILTER BULAN & TAHUN
-    |--------------------------------------------------------------------------
-    */
         $bulan = $request->bulan ?? now()->month;
         $tahun = $request->tahun ?? now()->year;
 
-        $today = Carbon::today();
-
-        $tanggalMulai   = $request->tanggal_mulai
+        $tanggalMulai = $request->tanggal_mulai
             ? Carbon::parse($request->tanggal_mulai)->startOfDay()
             : Carbon::today()->startOfDay();
 
@@ -112,11 +105,6 @@ class DashController extends Controller
             ? Carbon::parse($request->tanggal_selesai)->endOfDay()
             : Carbon::today()->endOfDay();
 
-        /*
-    |--------------------------------------------------------------------------
-    | 1️⃣ JADWAL DOKTER (TETAP HARI INI)
-    |--------------------------------------------------------------------------
-    */
 
         $jadwal = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
@@ -126,11 +114,10 @@ class DashController extends Controller
                 $join->on('r.section_id', '=', 's.section_id')
                     ->on('r.dokter_id', '=', 's.dokter_id')
                     ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
-                    ->where('r.status', 1);
+                    ->where('r.status', 1)
+                    ->where('r.parent_id', 0)
+                    ->where('r.status_batal', 0);
             })
-
-            ->join('patients as p', 'r.patient_id', '=', 'p.id')
-            ->join('patient_types as pt', 'r.type_id', '=', 'pt.id')
 
             ->select(
                 's.id',
@@ -158,114 +145,237 @@ class DashController extends Controller
 
             ->orderBy('s.open_time')
             ->get();
-        // dd($jadwal);
         /*
     |--------------------------------------------------------------------------
-    | 2️⃣ KUNJUNGAN PER POLI (BULANAN)
+    | BASE QUERY (BIAR KONSISTEN)
     |--------------------------------------------------------------------------
     */
-        $kunjunganPerPoli = DB::table('tr_pxregistrations as r')
-            ->join('sections as s', 'r.section_id', '=', 's.id')
-            ->selectRaw('
-            s.title as nama_poli,
-            COUNT(r.id) as total
-        ')
-            ->whereMonth('r.schedule_date', $bulan)
-            ->whereYear('r.schedule_date', $tahun)
-            ->where('r.status_batal', 0)
+        $baseQuery = DB::table('tr_pxregistrations as t')
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
+            ->where('t.status_batal', 0);
+
+        /*
+    |--------------------------------------------------------------------------
+    | JADWAL DOKTER (SUDAH BULANAN + FLEXIBLE TANGGAL)
+    |--------------------------------------------------------------------------
+    */
+        $jadwal = DB::table('rsv_schedules as s')
+            ->join('sections as sec', 's.section_id', '=', 'sec.id')
+            ->join('users as u', 's.dokter_id', '=', 'u.id')
+
+            ->leftJoin('tr_pxregistrations as r', function ($join) use ($bulan, $tahun, $tanggalMulai, $tanggalSelesai) {
+                $join->on('r.section_id', '=', 's.section_id')
+                    ->on('r.dokter_id', '=', 's.dokter_id')
+                    ->where('r.status', 1)
+                    ->where('r.parent_id', 0)
+                    ->where('r.status_batal', 0);
+
+                // 🔥 PRIORITAS: kalau ada filter tanggal → pakai itu
+                if ($tanggalMulai && $tanggalSelesai) {
+                    $join->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai]);
+                } else {
+                    $join->whereMonth('r.schedule_date', $bulan)
+                        ->whereYear('r.schedule_date', $tahun);
+                }
+            })
+
+            ->select(
+                's.id',
+                'u.name as nama_dokter',
+                'sec.title as nama_poli',
+                's.open_time',
+                's.closed_time',
+                's.kapasitaspasien',
+                DB::raw('COUNT(r.id) as total_pasien')
+            )
+
+            // 🔥 FILTER JADWAL
+            ->when($tanggalMulai && $tanggalSelesai, function ($q) use ($tanggalMulai, $tanggalSelesai) {
+                $q->whereBetween('s.date', [
+                    $tanggalMulai->toDateString(),
+                    $tanggalSelesai->toDateString()
+                ]);
+            }, function ($q) use ($bulan, $tahun) {
+                $q->whereMonth('s.date', $bulan)
+                    ->whereYear('s.date', $tahun);
+            })
+
+            ->groupBy(
+                's.id',
+                'u.name',
+                'sec.title',
+                's.open_time',
+                's.closed_time',
+                's.kapasitaspasien'
+            )
+
+            ->orderBy('s.date')
+            ->orderBy('s.open_time')
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | 1️⃣ KUNJUNGAN PER POLI (AMAN)
+    |--------------------------------------------------------------------------
+    */
+        $kunjunganPerPoli = DB::table('tr_pxregistrations as t')
+            ->join('sections as s', 't.section_id', '=', 's.id')
+
+            ->selectRaw('s.title as nama_poli, COUNT(t.id) as total')
+
+            ->whereMonth('t.schedule_date', $bulan)
+            ->whereYear('t.schedule_date', $tahun)
+
+            ->where('t.inpatient_status', 0)
+            ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
+            ->where('t.status_batal', 0)
+
             ->groupBy('s.title')
             ->orderByDesc('total')
             ->get();
 
         /*
     |--------------------------------------------------------------------------
-    | 3️⃣ RAWAT JALAN VS INAP (BULANAN)
+    | 2️⃣ RAWAT JALAN VS INAP
     |--------------------------------------------------------------------------
     */
-        $rawatJalan = DB::table('tr_pxregistrations')
-            ->whereMonth('schedule_date', $bulan)
-            ->whereYear('schedule_date', $tahun)
-            ->where('status_batal', 0)
-            ->where('inpatient_status', 0)
+        $rawatJalan = DB::table('tr_pxregistrations as t')
+            ->join('sections as s', 't.section_id', '=', 's.id')
+
+            ->whereMonth('t.schedule_date', $bulan)
+            ->whereYear('t.schedule_date', $tahun)
+
+            ->where('t.inpatient_status', 0)
+            ->where('s.title', '!=', 'IGD 24 JAM')
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
             ->count();
 
-        $rawatInap = DB::table('tr_pxregistrations')
-            ->whereMonth('schedule_date', $bulan)
-            ->whereYear('schedule_date', $tahun)
-            ->where('status_batal', 0)
-            ->where('inpatient_status', 1)
+        $rawatInap = DB::table('tr_pxregistrations as t')
+            ->whereMonth('t.checkout_date', $bulan)
+            ->whereYear('t.checkout_date', $tahun)
+
+            ->where('t.inpatient_status', 1)
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
             ->count();
 
         /*
     |--------------------------------------------------------------------------
-    | 4️⃣ PASIEN BARU VS LAMA (BULANAN)
+    | 3️⃣ IGD + PONEK
     |--------------------------------------------------------------------------
     */
-        $pasienBaru = DB::table('tr_pxregistrations')
+        $igd = DB::table('tr_pxregistrations as t')
+            ->join('sections as s', 't.section_id', '=', 's.id')
+
+            ->whereMonth('t.reg_date', $bulan)
+            ->whereYear('t.reg_date', $tahun)
+
+            ->where('t.inpatient_status', '=', '0')
+            ->whereIn('s.title', ['IGD 24 JAM', 'PONEK'])
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', '=', '0')
+            ->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | 4️⃣ PASIEN BARU VS LAMA
+    |--------------------------------------------------------------------------
+    */
+        $pasienBaru = (clone $baseQuery)
             ->whereMonth('schedule_date', $bulan)
             ->whereYear('schedule_date', $tahun)
-            ->where('status_batal', 0)
             ->where('first_regstatus', 1)
             ->count();
 
-        $pasienLama = DB::table('tr_pxregistrations')
+        $pasienLama = (clone $baseQuery)
             ->whereMonth('schedule_date', $bulan)
             ->whereYear('schedule_date', $tahun)
-            ->where('status_batal', 0)
             ->where('first_regstatus', 0)
             ->count();
-        /*
-|--------------------------------------------------------------------------
-| 5️⃣ JENIS PASIEN (BULANAN)
-|--------------------------------------------------------------------------
-*/
 
-        $jenisPasien = DB::table('tr_pxregistrations as r')
-            ->join('patients as p', 'r.patient_id', '=', 'p.id')
-            ->join('patient_types as pt', 'p.patient_typeid', '=', 'pt.id')
-            ->selectRaw('
-        pt.title,
-        COUNT(r.id) as total
-    ')
-            ->whereMonth('r.schedule_date', $bulan)
-            ->whereYear('r.schedule_date', $tahun)
-            ->where('r.status', 1)
-            ->where('r.status_batal', 0)
+        /*
+    |--------------------------------------------------------------------------
+    | 5️⃣ JENIS PASIEN
+    |--------------------------------------------------------------------------
+    */
+        $jenisPasien = DB::table('tr_pxregistrations as t')
+            ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
+
+            ->selectRaw('pt.title, COUNT(t.id) as total')
+
+            ->whereMonth('t.schedule_date', $bulan)
+            ->whereYear('t.schedule_date', $tahun)
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
+
             ->groupBy('pt.title')
             ->pluck('total', 'pt.title');
 
-        $asuransi     = $jenisPasien['ASURANSI'] ?? 0;
-        $bpjsNonPbi   = $jenisPasien['BPJS NON PBI'] ?? 0;
-        $bpjsPbi      = $jenisPasien['BPJS PBI'] ?? 0;
-        $bpjsUhc      = $jenisPasien['BPJS UHC'] ?? 0;
-        $jpk          = $jenisPasien['JPK'] ?? 0;
-        $pegawai      = $jenisPasien['PEGAWAI'] ?? 0;
-        $spm          = $jenisPasien['SPM'] ?? 0;
-        $umum         = $jenisPasien['UMUM'] ?? 0;
-        /*
-    |--------------------------------------------------------------------------
-    | RETURN VIEW
-    |--------------------------------------------------------------------------
-    */
+
+
+        $pxdokter = DB::table('tr_pxregistrations as t')
+            ->join('users as u', 't.dokter_id', '=', 'u.id')
+            ->join('sections as s', 't.section_id', '=', 's.id')
+
+            ->select(
+                'u.name as nama_dokter',
+                's.title as nama_poli',
+                DB::raw('COUNT(t.id) as total_pasien')
+            )
+
+            ->whereMonth('t.schedule_date', $bulan)
+            ->whereYear('t.schedule_date', $tahun)
+
+            ->where('t.inpatient_status', 0)
+            ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
+
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', 0)
+            ->where('t.status_batal', 0)
+
+            ->groupBy('u.name', 's.title')
+            ->orderByDesc('total_pasien')
+            ->get();
+        $labelsDokter = [];
+        $dataDokter = [];
+
+        foreach ($pxdokter as $item) {
+            $labelsDokter[] = $item->nama_dokter . ' (' . $item->nama_poli . ')';
+            $dataDokter[] = $item->total_pasien;
+        }
+
         return view('Page.dashboard', compact(
             'jadwal',
+            'tanggalMulai',
+            'tanggalSelesai',
             'kunjunganPerPoli',
             'rawatJalan',
             'rawatInap',
+            'igd',
             'pasienBaru',
             'pasienLama',
             'bulan',
             'tahun',
-            'asuransi',
-            'bpjsNonPbi',
-            'bpjsPbi',
-            'bpjsUhc',
-            'jpk',
-            'pegawai',
-            'spm',
-            'umum',
-            'tanggalMulai',
-            'tanggalSelesai'
+            'jenisPasien',
+            'pxdokter',
+            'labelsDokter',
+            'dataDokter'
         ));
     }
     public function getJadwalDokter(Request $request)
@@ -691,6 +801,7 @@ class DashController extends Controller
             $query->whereBetween('t.schedule_date', [$tanggalMulai, $tanggalSelesai])
                 ->where('t.inpatient_status', 0)
                 ->where('s3.title', '!=', 'IGD 24 JAM')
+                ->where('s3.title', '!=', 'PONEK')
                 ->orderBy('t.schedule_date', 'asc');
         } elseif ($jenis_kunjungan == 'ranap') {
 

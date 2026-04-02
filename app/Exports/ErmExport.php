@@ -102,7 +102,8 @@ class ErmExport implements FromCollection, WithHeadings
         } elseif ($this->jenis_kunjungan == 'igd') {
 
             $query->whereBetween('t.reg_date', [$start, $end])
-                ->where('t.inpatient_status', 0)
+                ->where('t.inpatient_status', '=', '0')
+                ->where('t.parent_id', '=', '0')
                 ->whereIn('s3.title', ['IGD 24 JAM', 'PONEK'])
                 ->orderBy('t.reg_date', 'ASC');
         }

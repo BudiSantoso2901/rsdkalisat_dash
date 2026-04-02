@@ -1,6 +1,16 @@
 @extends('layouts.layouts')
 
 @section('content')
+    <style>
+        .hover-shadow {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .hover-shadow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+    </style>
     <div class="content">
         <div class="container-fluid">
 
@@ -40,144 +50,150 @@
                     </form>
                 </div>
             </div>
-            <div class="row g-3">
+
+
+            {{-- ================== ROW 1 ================== --}}
+            <div class="row">
+
+                {{-- RAWAT JALAN VS RAWAT INAP --}}
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+
+                            <div class="mb-2">
+                                <i class="bi bi-hospital fs-2 text-primary"></i>
+                            </div>
+
+                            <h5 class="fw-semibold">
+                                Rawat Jalan dan Rawat Inap
+                            </h5>
+
+                            <canvas id="chartRawat"></canvas>
+                        </div>
+                    </div>
+                </div>
+
 
                 {{-- KUNJUNGAN PER POLI --}}
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body p-3">
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
 
-                            <div class="d-flex align-items-center justify-content-center mb-2">
-                                <i class="bi bi-clipboard2-pulse fs-5 text-success me-2"></i>
-                                <h6 class="mb-0 fw-semibold">
-                                    Kunjungan Per Poli
-                                </h6>
+                            <div class="mb-2">
+                                <i class="bi bi-clipboard2-pulse fs-2 text-success"></i>
                             </div>
 
-                            <div class="d-flex justify-content-center">
-                                <div style="width: 100%; max-width: 500px; height: 280px;">
-                                    <canvas id="chartPoli"></canvas>
-                                </div>
-                            </div>
+                            <h5 class="fw-semibold">
+                                Kunjungan Per Poli
+                            </h5>
 
+                            <canvas id="chartPoli"></canvas>
                         </div>
                     </div>
                 </div>
 
 
                 {{-- PASIEN BARU VS LAMA --}}
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body p-3">
+                <div class="col-xl-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
 
-                            <div class="d-flex align-items-center justify-content-center mb-2">
-                                <i class="bi bi-people-fill fs-5 text-warning me-2"></i>
-                                <h6 class="mb-0 fw-semibold">
-                                    Pasien Baru & Lama
-                                </h6>
+                            <div class="mb-2">
+                                <i class="bi bi-people-fill fs-2 text-warning"></i>
                             </div>
 
-                            <div class="d-flex justify-content-center">
-                                <div style="width: 100%; max-width: 300px; height: 280px;">
-                                    <canvas id="chartPasien"></canvas>
-                                </div>
-                            </div>
+                            <h5 class="fw-semibold">
+                                Pasien Baru dan Pasien Lama
+                            </h5>
 
+                            <canvas id="chartPasien"></canvas>
                         </div>
                     </div>
                 </div>
 
             </div>
+
+
             {{-- ================== ROW 2 ================== --}}
             <div class="row mt-3">
-                {{-- JENIS PASIEN BULANAN --}}
-                {{-- <div class="col-xl-12">
+                <div class="col-xl-12">
                     <div class="card">
                         <div class="card-body">
 
                             <h5 class="mb-4">
-                                Jenis Pasien Bulan
-                                {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
-                                {{ $tahun }}
+                                Statistik Kunjungan Dokter
+
                             </h5>
 
-                            @php
-                                $dataJenis = [
-                                    'ASURANSI' => $asuransi,
-                                    'BPJS NON PBI' => $bpjsNonPbi,
-                                    'BPJS PBI' => $bpjsPbi,
-                                    'BPJS UHC' => $bpjsUhc,
-                                    'JPK' => $jpk,
-                                    'PEGAWAI' => $pegawai,
-                                    'SPM' => $spm,
-                                    'UMUM' => $umum,
-                                ];
-
-                                $totalJenis = array_sum($dataJenis);
-                            @endphp
-
-                            <div class="row">
-
-                                @foreach ($dataJenis as $label => $value)
-                                    <div class="col-md-3 col-sm-6 mb-3">
-                                        <div class="border rounded p-3 text-center h-100">
-
-                                            <div class="text-muted small mb-1">
-                                                {{ $label }}
-                                            </div>
-
-                                            <div class="fs-4 fw-bold">
-                                                {{ number_format($value) }}
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                            </div>
-
-                            <div class="mt-3 pt-3 border-top d-flex justify-content-between">
-                                <span class="fw-semibold">Total Semua Jenis</span>
-                                <span class="fw-bold fs-5">
-                                    {{ number_format($totalJenis) }}
-                                </span>
-                            </div>
-
-                        </div>
-                    </div>
-                </div> --}}
-                {{-- STATISTIK BULANAN --}}
-                <div class="col-xl-4">
-                    <div class="card">
-                        <div class="card-body">
-
-                            <h5 class="mb-3">
-                                Statistik Bulan {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
-                                {{ $tahun }}
-                            </h5>
-
-                            @forelse ($kunjunganPerPoli as $poli)
-                                <div class="d-flex justify-content-between border-bottom py-2">
-                                    <span>{{ $poli->nama_poli }}</span>
-                                    <strong>{{ $poli->total }}</strong>
-                                </div>
-                            @empty
-                                <div class="text-center text-muted py-3">
-                                    Tidak ada data kunjungan
-                                </div>
-                            @endforelse
-
-                            <div class="mt-3 pt-2 border-top d-flex justify-content-between">
-                                <span class="fw-semibold">Total Kunjungan</span>
-                                <span class="fw-bold fs-5">
-                                    {{ $rawatJalan + $rawatInap }}
-                                </span>
+                            <div style="height: 400px; overflow-y: auto;">
+                                <canvas id="chartDokter"></canvas>
                             </div>
 
                         </div>
                     </div>
                 </div>
+                {{-- STATISTIK BULANAN --}}
+                <div class="col-xl-4 col-lg-6 col-md-12">
+                    <div class="card shadow-sm border-0 rounded-3">
+                        <div class="card-body">
 
+                            <!-- HEADER -->
+                            <h5 class="mb-4 fw-bold text-primary">
+                                Statistik Bulan
+                                {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }} {{ $tahun }}
+                            </h5>
+
+                            <!-- LIST POLI -->
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                @forelse ($kunjunganPerPoli as $poli)
+                                    <div
+                                        class="d-flex justify-content-between align-items-center py-2 px-2 mb-2 rounded bg-light hover-shadow">
+                                        <span class="text-dark small">
+                                            {{ $poli->nama_poli }}
+                                        </span>
+                                        <span class="badge bg-primary fs-6">
+                                            {{ number_format($poli->total) }}
+                                        </span>
+                                    </div>
+                                @empty
+                                    <div class="text-center text-muted py-3">
+                                        Tidak ada data kunjungan
+                                    </div>
+                                @endforelse
+                            </div>
+
+                            <!-- TOTAL SECTION -->
+                            <div class="row mt-4 g-2">
+
+                                <!-- RAWAT JALAN -->
+                                <div class="col-12 col-md-4">
+                                    <div class="p-3 rounded bg-primary text-white text-center shadow-sm">
+                                        <div class="small">Rawat Jalan</div>
+                                        <div class="fw-bold fs-5">{{ number_format($rawatJalan) }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- RAWAT INAP -->
+                                <div class="col-12 col-md-4">
+                                    <div class="p-3 rounded bg-success text-white text-center shadow-sm">
+                                        <div class="small">Rawat Inap</div>
+                                        <div class="fw-bold fs-5">{{ number_format($rawatInap) }}</div>
+                                    </div>
+                                </div>
+
+                                <!-- IGD -->
+                                <div class="col-12 col-md-4">
+                                    <div class="p-3 rounded bg-danger text-white text-center shadow-sm">
+                                        <div class="small">IGD & PONEK</div>
+                                        <div class="fw-bold fs-5">{{ number_format($igd) }}</div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
 
                 {{-- JADWAL DOKTER HARI INI --}}
                 <div class="col-xl-8">
@@ -321,27 +337,115 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        // ==============================
+        // DATA
+        // ==============================
         const rawatJalan = {{ $rawatJalan ?? 0 }};
         const rawatInap = {{ $rawatInap ?? 0 }};
         const pasienBaru = {{ $pasienBaru ?? 0 }};
         const pasienLama = {{ $pasienLama ?? 0 }};
+        const igd = {{ $igd ?? 0 }};
 
         const poliLabels = {!! json_encode($kunjunganPerPoli->pluck('nama_poli')) !!};
         const poliData = {!! json_encode($kunjunganPerPoli->pluck('total')) !!};
 
-        // Rawat Chart
-        new Chart(document.getElementById('chartRawat'), {
-            type: 'doughnut',
+        const dokterLabels = {!! json_encode(
+            $pxdokter->take(10)->map(function ($d) {
+                return $d->nama_dokter;
+            }),
+        ) !!};
+
+        const dokterData = {!! json_encode($pxdokter->take(10)->pluck('total_pasien')) !!};
+
+        // ==============================
+        // WARNA TEMA KESEHATAN
+        // ==============================
+        const warnaUtama = '#2ECC71'; // hijau
+        const warnaSekunder = '#3498DB'; // biru
+        const warnaAccent = '#1ABC9C';
+
+        // ==============================
+        // CHART DOKTER (HORIZONTAL 🔥)
+        // ==============================
+        new Chart(document.getElementById('chartDokter'), {
+            type: 'bar',
             data: {
-                labels: ['Rawat Jalan', 'Rawat Inap'],
+                labels: dokterLabels,
                 datasets: [{
-                    data: [rawatJalan, rawatInap],
-                    backgroundColor: ['#36A2EB', '#FF6384']
+                    label: 'Jumlah Pasien',
+                    data: dokterData,
+                    backgroundColor: warnaUtama,
+                    borderRadius: 8,
+                    barThickness: 18
                 }]
+            },
+            options: {
+                indexAxis: 'y', // 🔥 horizontal (SOLUSI nama panjang)
+                responsive: true,
+                maintainAspectRatio: false,
+
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.raw + ' pasien'
+                        }
+                    }
+                },
+
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#eee'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
             }
         });
 
-        // Poli Chart
+        // ==============================
+        // CHART RAWAT (DOUGHNUT)
+        // ==============================
+        new Chart(document.getElementById('chartRawat'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Rawat Jalan', 'Rawat Inap', 'IGD & PONEK'],
+                datasets: [{
+                    data: [rawatJalan, rawatInap, igd],
+                    backgroundColor: [
+                        warnaSekunder,
+                        '#5DADE2',
+                        '#AED6F1'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // ==============================
+        // CHART POLI (BAR)
+        // ==============================
         new Chart(document.getElementById('chartPoli'), {
             type: 'bar',
             data: {
@@ -349,7 +453,8 @@
                 datasets: [{
                     label: 'Jumlah Pasien',
                     data: poliData,
-                    backgroundColor: '#5b69bc'
+                    backgroundColor: warnaAccent,
+                    borderRadius: 6
                 }]
             },
             options: {
@@ -358,19 +463,47 @@
                     legend: {
                         display: false
                     }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
         });
 
-        // Pasien Chart
+        // ==============================
+        // CHART PASIEN (DOUGHNUT)
+        // ==============================
         new Chart(document.getElementById('chartPasien'), {
             type: 'doughnut',
             data: {
                 labels: ['Pasien Baru', 'Pasien Lama'],
                 datasets: [{
                     data: [pasienBaru, pasienLama],
-                    backgroundColor: ['#4CAF50', '#FFC107']
+                    backgroundColor: [
+                        warnaUtama,
+                        '#A9DFBF'
+                    ],
+                    borderWidth: 0
                 }]
+            },
+            options: {
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
             }
         });
     </script>
