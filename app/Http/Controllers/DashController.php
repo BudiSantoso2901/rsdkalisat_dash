@@ -115,7 +115,7 @@ class DashController extends Controller
                     ->on('r.dokter_id', '=', 's.dokter_id')
                     ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
                     ->where('r.status', 1)
-                    ->where('r.parent_id', 0)
+                    ->where('r.parent_id', '0')
                     ->where('r.status_batal', 0);
             })
 
@@ -153,7 +153,7 @@ class DashController extends Controller
         $baseQuery = DB::table('tr_pxregistrations as t')
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', 0)
+            ->where('t.parent_id', '0')
             ->where('t.status_batal', 0);
 
         /*
@@ -169,7 +169,7 @@ class DashController extends Controller
                 $join->on('r.section_id', '=', 's.section_id')
                     ->on('r.dokter_id', '=', 's.dokter_id')
                     ->where('r.status', 1)
-                    ->where('r.parent_id', 0)
+                    ->where('r.parent_id', '0')
                     ->where('r.status_batal', 0);
 
                 // 🔥 PRIORITAS: kalau ada filter tanggal → pakai itu
@@ -233,7 +233,7 @@ class DashController extends Controller
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', 0)
+            ->where('t.parent_id', '0')
             ->where('t.status_batal', 0)
 
             ->groupBy('s.title')
@@ -256,7 +256,7 @@ class DashController extends Controller
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', 0)
+            ->where('t.parent_id', '0')
             ->count();
 
         $rawatInap = DB::table('tr_pxregistrations as t')
@@ -267,7 +267,7 @@ class DashController extends Controller
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', 0)
+            ->where('t.parent_id', '0')
             ->count();
 
         /*
@@ -786,7 +786,7 @@ class DashController extends Controller
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', 0);
+            ->where('t.parent_id', '0');
 
 
 
