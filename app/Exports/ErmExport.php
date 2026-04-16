@@ -47,6 +47,7 @@ class ErmExport implements FromCollection, WithHeadings
                 'u.name as nama_dokter',
                 's3.title as ruangan',
                 'pt.title as penjamin',
+                't.biaya',
 
 
                 DB::raw("CASE WHEN t.bpjs_sep IS NOT NULL AND t.bpjs_sep <> '' THEN '✔' ELSE '❌' END AS cek_sep"),
@@ -78,7 +79,7 @@ class ErmExport implements FromCollection, WithHeadings
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
 
             ->where('t.status', 1)
-            ->where('t.parent_id', 0)
+            ->where('t.parent_id', '0')
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
 
             ->where(function ($q) {
@@ -169,6 +170,7 @@ class ErmExport implements FromCollection, WithHeadings
             'Nama Dokter',
             'Ruangan',
             'Penjamin',
+            'Biaya',
             'SEP',
             'Diagnosa',
             'Resume Medis',
