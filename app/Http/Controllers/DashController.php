@@ -62,7 +62,7 @@ class DashController extends Controller
         if ($request->filled('start_date') && $request->filled('end_date')) {
 
             $start = Carbon::parse($request->start_date)->startOfDay();
-            $end   = Carbon::parse($request->end_date)->endOfDay();
+            $end = Carbon::parse($request->end_date)->endOfDay();
 
             $query->whereBetween('tr_pxregistrations.reg_date', [
                 $start,
@@ -94,9 +94,14 @@ class DashController extends Controller
     // }
     public function jadwalDokterHariIni(Request $request)
     {
-        $bulan = $request->bulan ?? now()->month;
-        $tahun = $request->tahun ?? now()->year;
+        $bulan = (int) ($request->bulan ?? now()->month);
+        $tahun = (int) ($request->tahun ?? now()->year);
 
+        // Range bulan untuk seluruh statistik dashboard
+        $awalBulan = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
+        $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
+
+        // Range khusus jadwal dokter
         $tanggalMulai = $request->tanggal_mulai
             ? Carbon::parse($request->tanggal_mulai)->startOfDay()
             : Carbon::today()->startOfDay();
@@ -105,7 +110,11 @@ class DashController extends Controller
             ? Carbon::parse($request->tanggal_selesai)->endOfDay()
             : Carbon::today()->endOfDay();
 
-
+        /*
+        |--------------------------------------------------------------------------
+        | JADWAL DOKTER
+        |--------------------------------------------------------------------------
+        */
         $jadwal = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
@@ -113,7 +122,14 @@ class DashController extends Controller
             ->leftJoin('tr_pxregistrations as r', function ($join) use ($tanggalMulai, $tanggalSelesai) {
                 $join->on('r.section_id', '=', 's.section_id')
                     ->on('r.dokter_id', '=', 's.dokter_id')
+
+                    // Batasi data pasien hanya ke range yang diminta
                     ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
+
+                    // Pasien harus berada pada tanggal jadwal yang sama
+                    ->whereRaw('r.schedule_date >= s.date')
+                    ->whereRaw('r.schedule_date < DATE_ADD(s.date, INTERVAL 1 DAY)')
+
                     ->where('r.status', 1)
                     ->where('r.parent_id', '0')
                     ->where('r.status_batal', 0);
@@ -121,6 +137,7 @@ class DashController extends Controller
 
             ->select(
                 's.id',
+                's.date as tanggal_jadwal',
                 'u.name as nama_dokter',
                 'sec.title as nama_poli',
                 's.open_time',
@@ -129,81 +146,11 @@ class DashController extends Controller
                 DB::raw('COUNT(r.id) as total_pasien')
             )
 
-            ->whereBetween('s.date', [
-                $tanggalMulai->toDateString(),
-                $tanggalSelesai->toDateString()
-            ])
+            ->whereBetween('s.date', [$tanggalMulai, $tanggalSelesai])
 
             ->groupBy(
                 's.id',
-                'u.name',
-                'sec.title',
-                's.open_time',
-                's.closed_time',
-                's.kapasitaspasien'
-            )
-
-            ->orderBy('s.open_time')
-            ->get();
-        /*
-    |--------------------------------------------------------------------------
-    | BASE QUERY (BIAR KONSISTEN)
-    |--------------------------------------------------------------------------
-    */
-        $baseQuery = DB::table('tr_pxregistrations as t')
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
-            ->where('t.status', 1)
-            ->where('t.parent_id', '0')
-            ->where('t.status_batal', 0);
-
-        /*
-    |--------------------------------------------------------------------------
-    | JADWAL DOKTER (SUDAH BULANAN + FLEXIBLE TANGGAL)
-    |--------------------------------------------------------------------------
-    */
-        $jadwal = DB::table('rsv_schedules as s')
-            ->join('sections as sec', 's.section_id', '=', 'sec.id')
-            ->join('users as u', 's.dokter_id', '=', 'u.id')
-
-            ->leftJoin('tr_pxregistrations as r', function ($join) use ($bulan, $tahun, $tanggalMulai, $tanggalSelesai) {
-                $join->on('r.section_id', '=', 's.section_id')
-                    ->on('r.dokter_id', '=', 's.dokter_id')
-                    ->where('r.status', 1)
-                    ->where('r.parent_id', '0')
-                    ->where('r.status_batal', 0);
-
-                // 🔥 PRIORITAS: kalau ada filter tanggal → pakai itu
-                if ($tanggalMulai && $tanggalSelesai) {
-                    $join->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai]);
-                } else {
-                    $join->whereMonth('r.schedule_date', $bulan)
-                        ->whereYear('r.schedule_date', $tahun);
-                }
-            })
-
-            ->select(
-                's.id',
-                'u.name as nama_dokter',
-                'sec.title as nama_poli',
-                's.open_time',
-                's.closed_time',
-                's.kapasitaspasien',
-                DB::raw('COUNT(r.id) as total_pasien')
-            )
-
-            // 🔥 FILTER JADWAL
-            ->when($tanggalMulai && $tanggalSelesai, function ($q) use ($tanggalMulai, $tanggalSelesai) {
-                $q->whereBetween('s.date', [
-                    $tanggalMulai->toDateString(),
-                    $tanggalSelesai->toDateString()
-                ]);
-            }, function ($q) use ($bulan, $tahun) {
-                $q->whereMonth('s.date', $bulan)
-                    ->whereYear('s.date', $tahun);
-            })
-
-            ->groupBy(
-                's.id',
+                's.date',
                 'u.name',
                 'sec.title',
                 's.open_time',
@@ -213,111 +160,151 @@ class DashController extends Controller
 
             ->orderBy('s.date')
             ->orderBy('s.open_time')
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
+
+        // Kalau request AJAX tabel jadwal, jangan jalankan statistik dashboard
+        if ($request->ajax()) {
+            return view('Page.partials.jadwal-table', compact('jadwal'));
+        }
 
         /*
-    |--------------------------------------------------------------------------
-    | 1️⃣ KUNJUNGAN PER POLI (AMAN)
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | BASE QUERY
+        |--------------------------------------------------------------------------
+        */
+        $baseQuery = DB::table('tr_pxregistrations as t')
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', '0')
+            ->where('t.status_batal', 0);
+
+        /*
+        |--------------------------------------------------------------------------
+        | KUNJUNGAN + KUOTA PER POLI
+        |--------------------------------------------------------------------------
+        */
+
+        // Total kuota dari seluruh jadwal dokter per poli dalam bulan terpilih
+        $kuotaPerPoli = DB::table('rsv_schedules as rs')
+            ->select(
+                'rs.section_id',
+                DB::raw('SUM(COALESCE(rs.kapasitaspasien, 0)) as total_kuota')
+            )
+            ->whereBetween('rs.date', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString()
+            ])
+            ->groupBy('rs.section_id');
+
+
+        // Total kunjungan + kuota setiap poli
         $kunjunganPerPoli = DB::table('tr_pxregistrations as t')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
-            ->selectRaw('s.title as nama_poli, COUNT(t.id) as total')
+            ->leftJoinSub($kuotaPerPoli, 'q', function ($join) {
+                $join->on('q.section_id', '=', 's.id');
+            })
 
-            ->whereMonth('t.schedule_date', $bulan)
-            ->whereYear('t.schedule_date', $tahun)
+            ->selectRaw('
+                s.id as section_id,
+                s.title as nama_poli,
+                COUNT(t.id) as total,
+                COALESCE(q.total_kuota, 0) as total_kuota
+            ')
+
+            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
-
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->where('t.status_batal', 0)
 
-            ->groupBy('s.title')
+            ->groupBy(
+                's.id',
+                's.title',
+                'q.total_kuota'
+            )
+
             ->orderByDesc('total')
             ->get();
 
         /*
-    |--------------------------------------------------------------------------
-    | 2️⃣ RAWAT JALAN VS INAP
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | RAWAT JALAN
+        |--------------------------------------------------------------------------
+        */
         $rawatJalan = DB::table('tr_pxregistrations as t')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
-            ->whereMonth('t.schedule_date', $bulan)
-            ->whereYear('t.schedule_date', $tahun)
+            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
 
             ->where('t.inpatient_status', 0)
             ->where('s.title', '!=', 'IGD 24 JAM')
-
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
-            ->where('t.status', 1)
-            ->where('t.parent_id', '0')
-            ->count();
-
-        $rawatInap = DB::table('tr_pxregistrations as t')
-            ->whereMonth('t.checkout_date', $bulan)
-            ->whereYear('t.checkout_date', $tahun)
-
-            ->where('t.inpatient_status', 1)
-
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->count();
 
         /*
-    |--------------------------------------------------------------------------
-    | 3️⃣ IGD + PONEK
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | RAWAT INAP
+        |--------------------------------------------------------------------------
+        */
+        $rawatInap = DB::table('tr_pxregistrations as t')
+            ->whereBetween('t.checkout_date', [$awalBulan, $akhirBulan])
+            ->where('t.inpatient_status', 1)
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('t.status', 1)
+            ->where('t.parent_id', '0')
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | IGD + PONEK
+        |--------------------------------------------------------------------------
+        */
         $igd = DB::table('tr_pxregistrations as t')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
-            ->whereMonth('t.reg_date', $bulan)
-            ->whereYear('t.reg_date', $tahun)
+            ->whereBetween('t.reg_date', [$awalBulan, $akhirBulan])
 
-            ->where('t.inpatient_status', '=', '0')
+            ->where('t.inpatient_status', 0)
             ->whereIn('s.title', ['IGD 24 JAM', 'PONEK'])
-
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
-            ->where('t.parent_id', '=', '0')
+            ->where('t.parent_id', '0')
             ->count();
 
         /*
-    |--------------------------------------------------------------------------
-    | 4️⃣ PASIEN BARU VS LAMA
-    |--------------------------------------------------------------------------
-    */
-        $pasienBaru = (clone $baseQuery)
-            ->whereMonth('schedule_date', $bulan)
-            ->whereYear('schedule_date', $tahun)
-            ->where('first_regstatus', 1)
-            ->count();
+        |--------------------------------------------------------------------------
+        | PASIEN BARU VS LAMA
+        | Sebelumnya 2 query, sekarang hanya 1 query
+        |--------------------------------------------------------------------------
+        */
+        $pasienStatus = (clone $baseQuery)
+            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->selectRaw('
+            SUM(CASE WHEN t.first_regstatus = 1 THEN 1 ELSE 0 END) AS baru,
+            SUM(CASE WHEN t.first_regstatus = 0 THEN 1 ELSE 0 END) AS lama
+        ')
+            ->first();
 
-        $pasienLama = (clone $baseQuery)
-            ->whereMonth('schedule_date', $bulan)
-            ->whereYear('schedule_date', $tahun)
-            ->where('first_regstatus', 0)
-            ->count();
+        $pasienBaru = (int) ($pasienStatus->baru ?? 0);
+        $pasienLama = (int) ($pasienStatus->lama ?? 0);
 
         /*
-    |--------------------------------------------------------------------------
-    | 5️⃣ JENIS PASIEN
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | JENIS PASIEN
+        |--------------------------------------------------------------------------
+        */
         $jenisPasien = DB::table('tr_pxregistrations as t')
             ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
-
             ->selectRaw('pt.title, COUNT(t.id) as total')
 
-            ->whereMonth('t.schedule_date', $bulan)
-            ->whereYear('t.schedule_date', $tahun)
+            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
@@ -326,8 +313,11 @@ class DashController extends Controller
             ->groupBy('pt.title')
             ->pluck('total', 'pt.title');
 
-
-
+        /*
+        |--------------------------------------------------------------------------
+        | KUNJUNGAN DOKTER
+        |--------------------------------------------------------------------------
+        */
         $pxdokter = DB::table('tr_pxregistrations as t')
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->join('sections as s', 't.section_id', '=', 's.id')
@@ -338,12 +328,10 @@ class DashController extends Controller
                 DB::raw('COUNT(t.id) as total_pasien')
             )
 
-            ->whereMonth('t.schedule_date', $bulan)
-            ->whereYear('t.schedule_date', $tahun)
+            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
-
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
             ->where('t.parent_id', 0)
@@ -352,6 +340,7 @@ class DashController extends Controller
             ->groupBy('u.name', 's.title')
             ->orderByDesc('total_pasien')
             ->get();
+
         $labelsDokter = [];
         $dataDokter = [];
 
@@ -378,38 +367,60 @@ class DashController extends Controller
             'dataDokter'
         ));
     }
+
     public function getJadwalDokter(Request $request)
     {
+        $tanggalMulai = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $tanggalSelesai = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : Carbon::today()->endOfDay();
+
         /*
-    |--------------------------------------------------------------------------
-    | TANGGAL FILTER
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | AGREGASI PASIEN PER TANGGAL + DOKTER + POLI
+        |--------------------------------------------------------------------------
+        |
+        | Sebelum join ke jadwal, pasien dihitung dulu per tanggal.
+        | Ini mencegah total seluruh range masuk ke setiap tanggal jadwal.
+        |
+        */
+        $registrasi = DB::table('tr_pxregistrations as r')
+            ->selectRaw('
+            DATE(r.schedule_date) as tanggal,
+            r.section_id,
+            r.dokter_id,
+            COUNT(r.id) as total_pasien
+        ')
+            ->whereBetween('r.schedule_date', [
+                $tanggalMulai,
+                $tanggalSelesai
+            ])
+            ->where('r.status', 1)
+            ->where('r.parent_id', '0')
+            ->where('r.status_batal', 0)
+            ->groupByRaw('
+            DATE(r.schedule_date),
+            r.section_id,
+            r.dokter_id
+        ');
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-
-            $tanggalMulai   = Carbon::parse($request->start_date)->startOfDay();
-            $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
-        } else {
-
-            $tanggalMulai   = Carbon::today()->startOfDay();
-            $tanggalSelesai = Carbon::today()->endOfDay();
-        }
-
+        /*
+        |--------------------------------------------------------------------------
+        | JADWAL DOKTER
+        |--------------------------------------------------------------------------
+        */
         $query = DB::table('rsv_schedules as s')
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
 
-            ->leftJoin('tr_pxregistrations as r', function ($join) use ($tanggalMulai, $tanggalSelesai) {
-
+            ->leftJoinSub($registrasi, 'r', function ($join) {
                 $join->on('r.section_id', '=', 's.section_id')
                     ->on('r.dokter_id', '=', 's.dokter_id')
-                    ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
-                    ->where('r.status', 1);
+                    ->on('r.tanggal', '=', DB::raw('DATE(s.date)'));
             })
-
-            ->leftJoin('patients as p', 'r.patient_id', '=', 'p.id')
-            ->leftJoin('patient_types as pt', 'r.type_id', '=', 'pt.id')
 
             ->select([
                 's.id',
@@ -425,48 +436,28 @@ class DashController extends Controller
                 's.kuotajkn',
                 's.kuotanonjkn',
                 's.kapasitaspasien',
-                DB::raw('COUNT(r.id) as total_pasien')
+
+                DB::raw('COALESCE(r.total_pasien, 0) as total_pasien')
             ])
 
-            ->groupBy(
-                's.id',
-                's.title',
-                'u.name',
-                'sec.code',
-                'sec.prefix',
-                'sec.title',
-                's.kodesubspesialis',
-                's.date',
-                's.open_time',
-                's.closed_time',
-                's.kuotajkn',
-                's.kuotanonjkn',
-                's.kapasitaspasien'
-            );
+            ->whereBetween('s.date', [
+                $tanggalMulai->toDateString(),
+                $tanggalSelesai->toDateString()
+            ])
+
+            ->orderBy('s.date')
+            ->orderBy('s.open_time');
 
         /*
-    |--------------------------------------------------------------------------
-    | FILTER TANGGAL JADWAL
-    |--------------------------------------------------------------------------
-    */
-
-        if (!$request->filled('start_date') && !$request->filled('end_date')) {
-
-            $query->whereDate('s.date', Carbon::today());
-        } else {
-
-            $query->whereBetween('s.date', [
-                Carbon::parse($request->start_date)->toDateString(),
-                Carbon::parse($request->end_date)->toDateString()
-            ]);
-        }
-
+        |--------------------------------------------------------------------------
+        | DATATABLE
+        |--------------------------------------------------------------------------
+        */
         return DataTables::of($query)
 
             ->addIndexColumn()
 
             ->editColumn('date', function ($row) {
-
                 return $row->date
                     ? Carbon::parse($row->date)->translatedFormat('l') . '<br>' .
                     Carbon::parse($row->date)->translatedFormat('d F Y')
@@ -474,14 +465,12 @@ class DashController extends Controller
             })
 
             ->editColumn('open_time', function ($row) {
-
                 return $row->open_time
                     ? Carbon::parse($row->open_time)->format('H:i')
                     : '-';
             })
 
             ->editColumn('closed_time', function ($row) {
-
                 return $row->closed_time
                     ? Carbon::parse($row->closed_time)->format('H:i')
                     : '-';
@@ -492,32 +481,29 @@ class DashController extends Controller
                 $kapasitas = (int) ($row->kapasitaspasien ?? 0);
                 $terisi = (int) ($row->total_pasien ?? 0);
 
-                $persen = $kapasitas > 0 ? round(($terisi / $kapasitas) * 100) : 0;
-                $persen = min($persen, 100);
+                $persen = $kapasitas > 0
+                    ? min(round(($terisi / $kapasitas) * 100), 100)
+                    : 0;
 
-                $warna = 'bg-success';
-
-                if ($persen >= 100) {
-                    $warna = 'bg-danger';
-                } elseif ($persen >= 80) {
-                    $warna = 'bg-warning';
-                }
+                $warna = $persen >= 100
+                    ? 'bg-danger'
+                    : ($persen >= 80 ? 'bg-warning' : 'bg-success');
 
                 return '
-            <div style="min-width:130px">
-                <div class="fw-semibold mb-1">
-                    ' . $terisi . ' / ' . $kapasitas . '
-                </div>
-                <div class="progress" style="height:6px;">
-                    <div class="progress-bar ' . $warna . '"
-                        style="width: ' . $persen . '%">
+                <div style="min-width:130px">
+                    <div class="fw-semibold mb-1">
+                        ' . $terisi . ' / ' . $kapasitas . '
                     </div>
-                </div>
-            </div>';
+
+                    <div class="progress" style="height:6px;">
+                        <div class="progress-bar ' . $warna . '"
+                             style="width:' . $persen . '%">
+                        </div>
+                    </div>
+                </div>';
             })
 
             ->rawColumns(['date', 'kuota_progress'])
-
             ->make(true);
     }
     public function view_kunjungan_poli()
@@ -725,238 +711,235 @@ class DashController extends Controller
     // }
     public function getKunjunganPoli(Request $request)
     {
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER TANGGAL
+        |--------------------------------------------------------------------------
+        */
+        $tanggalMulai = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $tanggalSelesai = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : Carbon::today()->endOfDay();
+
+        $jenisKunjungan = $request->jenis_kunjungan ?? 'rajal';
 
         /*
-    |--------------------------------------------------------------------------
-    | FILTER TANGGAL
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | PILIH KOLOM TANGGAL
+        |--------------------------------------------------------------------------
+        */
+        $dateColumn = match ($jenisKunjungan) {
+            'ranap' => 'checkout_date',
+            'igd' => 'reg_date',
+            default => 'schedule_date',
+        };
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER REGISTRASI DULU
+        |--------------------------------------------------------------------------
+        | Data diperkecil sebelum join ke tabel lain.
+        */
+        $registrasi = DB::table('tr_pxregistrations')
+            ->select([
+                'schedule_date',
+                'reg_date',
+                'checkout_date',
+                'selesai_date',
+                'numb',
+                'inpatient_status',
+                'dokter_id',
+                'section_id',
+                'patient_id',
+                'type_id',
+                'status_batal',
+                'bpjs_sep',
+                'bayar_date',
+                'biaya',
+                'rm_diagnosa',
+                'source_reg',
+            ])
+            ->whereBetween($dateColumn, [$tanggalMulai, $tanggalSelesai])
+            ->whereIn('source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where('status', 1)
+            ->where('parent_id', '0');
 
-            $tanggalMulai   = Carbon::parse($request->start_date)->startOfDay();
-            $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER JENIS KUNJUNGAN
+        |--------------------------------------------------------------------------
+        */
+        if ($jenisKunjungan === 'ranap') {
+            $registrasi->where('inpatient_status', 1);
         } else {
-
-            $tanggalMulai   = Carbon::today()->startOfDay();
-            $tanggalSelesai = Carbon::today()->endOfDay();
+            $registrasi->where('inpatient_status', 0);
         }
 
-
         /*
-    |--------------------------------------------------------------------------
-    | JENIS KUNJUNGAN (RAJAL / RANAP / IGD)
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | QUERY UTAMA
+        |--------------------------------------------------------------------------
+        */
+        $query = DB::query()
+            ->fromSub($registrasi, 't')
 
-        $jenis_kunjungan = $request->jenis_kunjungan ?? 'rajal';
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | QUERY UTAMA
-    |--------------------------------------------------------------------------
-    */
-
-        $query = DB::table('tr_pxregistrations as t')
             ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
             ->join('patients as p', 't.patient_id', '=', 'p.id')
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
 
-            ->select(
+            ->select([
                 't.schedule_date',
                 't.reg_date',
                 't.checkout_date',
                 't.selesai_date',
+
                 't.numb as no_registrasi',
                 't.inpatient_status',
+
                 'u.name as nama_dokter',
+
                 't.status_batal',
+
                 's3.title as ruangan',
+
                 'p.nrm',
                 'p.name as nama_pasien',
+
                 'pt.title as penjamin',
+
                 't.bpjs_sep',
                 't.bayar_date',
                 't.biaya',
                 't.rm_diagnosa',
-                't.source_reg'
-            )
-
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
-            ->where('t.status', 1)
-            ->where('t.parent_id', '0');
-
-
+                't.source_reg',
+            ]);
 
         /*
-    |--------------------------------------------------------------------------
-    | FILTER BERDASARKAN JENIS KUNJUNGAN
-    |--------------------------------------------------------------------------
-    */
+        |--------------------------------------------------------------------------
+        | FILTER RAJAL / IGD
+        |--------------------------------------------------------------------------
+        */
+        if ($jenisKunjungan === 'rajal') {
 
-        if ($jenis_kunjungan == 'rajal') {
+            $query->whereNotIn('s3.title', [
+                'IGD 24 JAM',
+                'PONEK'
+            ]);
 
-            $query->whereBetween('t.schedule_date', [$tanggalMulai, $tanggalSelesai])
-                ->where('t.inpatient_status', 0)
-                ->where('s3.title', '!=', 'IGD 24 JAM')
-                ->where('s3.title', '!=', 'PONEK')
-                ->orderBy('t.schedule_date', 'asc');
-        } elseif ($jenis_kunjungan == 'ranap') {
+        } elseif ($jenisKunjungan === 'igd') {
 
-            $query->whereBetween('t.checkout_date', [$tanggalMulai, $tanggalSelesai])
-                ->where('t.inpatient_status', 1)
-                ->orderBy('t.checkout_date', 'asc');
-        } elseif ($jenis_kunjungan == 'igd') {
-
-            $query->whereBetween('t.reg_date', [$tanggalMulai, $tanggalSelesai])
-                ->where('t.inpatient_status', 0)
-                ->whereIn('s3.title', ['IGD 24 JAM', 'PONEK'])
-                ->orderBy('t.reg_date', 'asc');
+            $query->whereIn('s3.title', [
+                'IGD 24 JAM',
+                'PONEK'
+            ]);
         }
 
-
         /*
-    |--------------------------------------------------------------------------
-    | FILTER JENIS PASIEN
-    |--------------------------------------------------------------------------
-    */
-
+        |--------------------------------------------------------------------------
+        | FILTER JENIS PASIEN
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('jenis_pasien')) {
 
-            $jenis = $request->jenis_pasien;
-
-            if (!is_array($jenis)) {
-                $jenis = explode(',', $jenis);
-            }
+            $jenis = is_array($request->jenis_pasien)
+                ? $request->jenis_pasien
+                : explode(',', $request->jenis_pasien);
 
             $query->whereIn('pt.title', $jenis);
         }
-        /*
-|--------------------------------------------------------------------------
-| FILTER DOKTER
-|--------------------------------------------------------------------------
-*/
 
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER DOKTER
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('dokter')) {
 
-            $dokter = $request->dokter;
-
-            // support multi select (array atau string "1,2,3")
-            if (!is_array($dokter)) {
-                $dokter = explode(',', $dokter);
-            }
+            $dokter = is_array($request->dokter)
+                ? $request->dokter
+                : explode(',', $request->dokter);
 
             $query->whereIn('t.dokter_id', $dokter);
         }
 
         /*
-    |--------------------------------------------------------------------------
-    | FILTER RUANGAN / POLI
-    |--------------------------------------------------------------------------
-    */
-
+        |--------------------------------------------------------------------------
+        | FILTER POLI
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('ruangan')) {
-
             $query->where('t.section_id', $request->ruangan);
         }
 
-
+        /*
+        |--------------------------------------------------------------------------
+        | ORDER
+        |--------------------------------------------------------------------------
+        */
+        $query->orderBy("t.$dateColumn", 'asc');
 
         /*
-    |--------------------------------------------------------------------------
-    | DATATABLES
-    |--------------------------------------------------------------------------
-    */
-
+        |--------------------------------------------------------------------------
+        | DATATABLE
+        |--------------------------------------------------------------------------
+        */
         return DataTables::of($query)
 
             ->addIndexColumn()
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | GLOBAL SEARCH
-        |--------------------------------------------------------------------------
-        */
-
             ->filter(function ($query) use ($request) {
 
-                if ($request->has('search')) {
+                $search = $request->input('search.value');
 
-                    $search = $request->get('search')['value'];
-
-                    if ($search != '') {
-
-                        $query->where(function ($q) use ($search) {
-
-                            $q->where('p.name', 'like', "%{$search}%")
-                                ->orWhere('p.nrm', 'like', "%{$search}%")
-                                ->orWhere('u.name', 'like', "%{$search}%")
-                                ->orWhere('s3.title', 'like', "%{$search}%")
-                                ->orWhere('pt.title', 'like', "%{$search}%")
-                                ->orWhere('t.numb', 'like', "%{$search}%");
-                        });
-                    }
+                if (!$search) {
+                    return;
                 }
+
+                $query->where(function ($q) use ($search) {
+
+                    $q->where('p.name', 'like', "%{$search}%")
+                        ->orWhere('p.nrm', 'like', "%{$search}%")
+                        ->orWhere('u.name', 'like', "%{$search}%")
+                        ->orWhere('s3.title', 'like', "%{$search}%")
+                        ->orWhere('pt.title', 'like', "%{$search}%")
+                        ->orWhere('t.numb', 'like', "%{$search}%");
+                });
             })
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | FORMAT TANGGAL
-        |--------------------------------------------------------------------------
-        */
-
             ->editColumn('schedule_date', function ($row) {
-
                 return $row->schedule_date
                     ? Carbon::parse($row->schedule_date)->format('d-m-Y H:i')
                     : '-';
             })
 
-
             ->editColumn('reg_date', function ($row) {
-
                 return $row->reg_date
                     ? Carbon::parse($row->reg_date)->format('d-m-Y H:i')
                     : '-';
             })
 
-
             ->editColumn('checkout_date', function ($row) {
-
                 return $row->checkout_date
                     ? Carbon::parse($row->checkout_date)->format('d-m-Y H:i')
                     : '-';
             })
 
-
             ->editColumn('bayar_date', function ($row) {
-
                 return $row->bayar_date
                     ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
                     : '-';
             })
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | STATUS BATAL
-        |--------------------------------------------------------------------------
-        */
-
             ->editColumn('status_batal', function ($row) {
 
-                if ($row->status_batal == 1) {
-
-                    return '<span class="badge bg-danger">Batal</span>';
-                }
-
-                return '<span class="badge bg-success">Aktif</span>';
+                return $row->status_batal == 1
+                    ? '<span class="badge bg-danger">Batal</span>'
+                    : '<span class="badge bg-success">Aktif</span>';
             })
-
 
             ->rawColumns(['status_batal'])
 
@@ -966,7 +949,7 @@ class DashController extends Controller
     {
 
         $start = $request->start_date;
-        $end   = $request->end_date;
+        $end = $request->end_date;
         $jenis = $request->jenis_pasien;
         $ruangan = $request->ruangan;
         $jenis_kunjungan = $request->jenis_kunjungan;
