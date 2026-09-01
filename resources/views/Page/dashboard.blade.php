@@ -1,331 +1,792 @@
 @extends('layouts.layouts')
 
 @section('content')
+    @php
+        $total = ($rawatJalan ?? 0) + ($rawatInap ?? 0) + ($igd ?? 0);
+        $totalPasien = ($pasienBaru ?? 0) + ($pasienLama ?? 0);
+
+        $pct = fn($value, $base) => $base > 0 ? round(($value / $base) * 100, 1) : 0;
+    @endphp
+
     <style>
-        .hover-shadow {
-            transition: all 0.2s ease-in-out;
+        .dash {
+            --blue: #4f9cf9;
+            --green: #24c875;
+            --red: #ff6464;
+            --text: #273444;
+            --muted: #8290a3;
+            --border: #e8edf3;
+            padding-bottom: 30px;
         }
 
-        .hover-shadow:hover {
+        .dash-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 4px 18px rgba(31, 45, 61, .04);
+        }
+
+        /* HEADER */
+        .dash-header {
+            padding: 22px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .dash-header h4 {
+            margin: 0 0 4px;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .dash-header p,
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .period-form,
+        .schedule-filter {
+            display: flex;
+            align-items: end;
+            gap: 8px;
+        }
+
+        .period-field {
+            min-width: 140px;
+        }
+
+        .period-field label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .period-form .form-control,
+        .schedule-filter .form-control {
+            height: 38px;
+            border-radius: 8px;
+            border-color: var(--border);
+            font-size: 12px;
+        }
+
+        .period-form .btn,
+        .schedule-filter .btn {
+            height: 38px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        /* KPI */
+        .metric {
+            height: 100%;
+            padding: 18px;
+            transition: .2s;
+        }
+
+        .metric:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 24px rgba(31, 45, 61, .07);
+        }
+
+        .metric-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            margin-top: 4px;
+            font-size: 27px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .metric-info {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .metric-icon {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            font-size: 20px;
+        }
+
+        .i-primary {
+            color: var(--blue);
+            background: #eef6ff
+        }
+
+        .i-blue {
+            color: #3498db;
+            background: #eef7fd
+        }
+
+        .i-green {
+            color: var(--green);
+            background: #ebfbf3
+        }
+
+        .i-red {
+            color: var(--red);
+            background: #fff0f0
+        }
+
+        /* SECTION */
+        .section-body {
+            padding: 22px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            margin: 0;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .section-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            background: #eef6ff;
+            color: var(--blue);
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* CHART */
+        .poli-chart {
+            position: relative;
+            width: 100%;
+            height: 470px;
+        }
+
+        .doctor-chart {
+            position: relative;
+            height: 430px;
+        }
+
+        .patient-panel {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .patient-chart {
+            position: relative;
+            height: 300px;
+            margin-top: 5px;
+        }
+
+        .patient-list {
+            margin-top: auto;
+            display: grid;
+            gap: 8px;
+        }
+
+        .patient-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            font-size: 12px;
+        }
+
+        .patient-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #536273;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        .dot-new {
+            background: var(--green)
+        }
+
+        .dot-old {
+            background: #a7dfbf
+        }
+
+        .patient-item strong,
+        .patient-item small {
+            display: block;
+            text-align: right;
+        }
+
+        .patient-item strong {
+            color: var(--text)
+        }
+
+        .patient-item small {
+            color: var(--muted)
+        }
+
+        /* JADWAL */
+        .schedule-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 18px;
+        }
+
+        .schedule-filter .form-control {
+            width: 145px;
+        }
+
+        .schedule-table {
+            margin: 0;
+        }
+
+        .schedule-table th {
+            padding: 12px;
+            background: #f8fafc;
+            color: #667587;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .schedule-table td {
+            padding: 14px 12px;
+            color: #687789;
+            font-size: 12px;
+            border-color: #edf1f5;
+            vertical-align: middle;
+        }
+
+        .doctor-name {
+            color: #4c5a69;
+            font-weight: 600;
+        }
+
+        .quota {
+            width: 120px;
+            height: 5px;
+            overflow: hidden;
+            background: #e6eaee;
+            border-radius: 10px;
+        }
+
+        .quota .progress-bar {
+            height: 100%;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .available {
+            color: #159455;
+            background: #e8f9f0;
+        }
+
+        .warning-status {
+            color: #a86b00;
+            background: #fff3d5;
+        }
+
+        .full-status {
+            color: #d94343;
+            background: #ffeded;
+        }
+
+        /* PAGINATION */
+        .schedule-pagination .pagination {
+            margin: 0;
+            gap: 4px;
+        }
+
+        .schedule-pagination .page-link {
+            min-width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px !important;
+            border: 1px solid var(--border);
+            color: #687789;
+            font-size: 12px;
+            box-shadow: none;
+        }
+
+        .schedule-pagination .page-item.active .page-link {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: #fff;
+        }
+
+        .schedule-pagination .page-item.disabled .page-link {
+            color: #b9c2cc;
+            background: #f8fafc;
+        }
+
+        @media(max-width:991px) {
+            .dash-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .period-form {
+                width: 100%
+            }
+
+            .period-field {
+                flex: 1
+            }
+
+            .patient-chart {
+                height: 270px
+            }
+        }
+
+        @media(max-width:767px) {
+            .dash-header {
+                padding: 17px
+            }
+
+            .period-form,
+            .schedule-head {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .period-form .btn {
+                width: 100%
+            }
+
+            .schedule-filter {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .schedule-filter .form-control {
+                flex: 1;
+                width: auto;
+            }
+
+            .schedule-filter .btn {
+                flex: 1 1 100%;
+            }
+
+            .section-body {
+                padding: 17px
+            }
+
+            .poli-chart {
+                height: 440px
+            }
+
+            .doctor-chart {
+                height: 380px
+            }
+
+            .schedule-pagination {
+                align-items: flex-start !important;
+                flex-direction: column;
+            }
         }
     </style>
+
+
     <div class="content">
-        <div class="container-fluid">
+        <div class="container-fluid dash">
 
-            {{-- ================= FILTER BULAN & TAHUN ================= --}}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <form method="GET" action="{{ route('dashboard') }}">
-                        <div class="row align-items-end">
+            {{-- HEADER --}}
+            <div class="dash-card dash-header">
 
-                            <div class="col-md-3">
-                                <label class="form-label">Bulan</label>
-                                <select name="bulan" class="form-control">
-                                    @for ($i = 1; $i <= 12; $i++)
-                                        <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
-                                            {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
-                                        </option>
-                                    @endfor
-                                </select>
-                            </div>
+                <div>
+                    <h4>Dashboard Pelayanan</h4>
 
-                            <div class="col-md-3">
-                                <label class="form-label">Tahun</label>
-                                <select name="tahun" class="form-control">
-                                    @for ($t = now()->year; $t >= now()->year - 20; $t--)
-                                        <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>
-                                            {{ $t }}
-                                        </option>
-                                    @endfor
-                                </select>
-                            </div>
-
-                            <div class="col-md-2">
-                                <button class="btn btn-primary w-100">Tampilkan</button>
-                            </div>
-
-                        </div>
-                    </form>
+                    <p>
+                        Ringkasan aktivitas pelayanan rumah sakit periode
+                        {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
+                        {{ $tahun }}
+                    </p>
                 </div>
+
+
+                <form method="GET" action="{{ route('dashboard') }}" class="period-form">
+
+                    @if (request('tanggal_mulai'))
+                        <input type="hidden" name="tanggal_mulai" value="{{ request('tanggal_mulai') }}">
+                    @endif
+
+                    @if (request('tanggal_selesai'))
+                        <input type="hidden" name="tanggal_selesai" value="{{ request('tanggal_selesai') }}">
+                    @endif
+
+
+                    <div class="period-field">
+                        <label>Bulan</label>
+
+                        <select name="bulan" class="form-control">
+                            @for ($i = 1; $i <= 12; $i++)
+                                <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
+
+                                    {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
+
+
+                    <div class="period-field">
+                        <label>Tahun</label>
+
+                        <select name="tahun" class="form-control">
+                            @for ($t = now()->year; $t >= now()->year - 20; $t--)
+                                <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>
+
+                                    {{ $t }}
+                                </option>
+                            @endfor
+                        </select>
+                    </div>
+
+
+                    <button class="btn btn-primary">
+                        <i class="bi bi-filter me-1"></i>
+                        Tampilkan
+                    </button>
+
+                </form>
+
             </div>
 
 
-            {{-- ================== ROW 1 ================== --}}
-            <div class="row">
+            {{-- KPI --}}
+            @php
+                $metrics = [
+                    ['Total Kunjungan', $total, 'Seluruh jenis pelayanan', 'bi-people', 'i-primary'],
+                    [
+                        'Rawat Jalan',
+                        $rawatJalan ?? 0,
+                        $pct($rawatJalan ?? 0, $total) . '% dari total kunjungan',
+                        'bi-hospital',
+                        'i-blue',
+                    ],
+                    [
+                        'Rawat Inap',
+                        $rawatInap ?? 0,
+                        $pct($rawatInap ?? 0, $total) . '% dari total kunjungan',
+                        'bi-building',
+                        'i-green',
+                    ],
+                    [
+                        'IGD & PONEK',
+                        $igd ?? 0,
+                        $pct($igd ?? 0, $total) . '% dari total kunjungan',
+                        'bi-heart-pulse',
+                        'i-red',
+                    ],
+                ];
+            @endphp
 
-                {{-- RAWAT JALAN VS RAWAT INAP --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
 
-                            <div class="mb-2">
-                                <i class="bi bi-hospital fs-2 text-primary"></i>
+            <div class="row g-3 mb-3">
+
+                @foreach ($metrics as [$label, $value, $info, $icon, $class])
+                    <div class="col-xl-3 col-md-6">
+                        <div class="dash-card metric">
+
+                            <div class="metric-main">
+
+                                <div>
+                                    <div class="metric-label">
+                                        {{ $label }}
+                                    </div>
+
+                                    <div class="metric-value">
+                                        {{ number_format($value) }}
+                                    </div>
+                                </div>
+
+                                <div class="metric-icon {{ $class }}">
+                                    <i class="bi {{ $icon }}"></i>
+                                </div>
+
                             </div>
 
-                            <h5 class="fw-semibold">
-                                Rawat Jalan dan Rawat Inap
-                            </h5>
+                            <div class="metric-info">
+                                {{ $info }}
+                            </div>
 
-                            <canvas id="chartRawat"></canvas>
                         </div>
                     </div>
-                </div>
+                @endforeach
 
+            </div>
+
+
+            {{-- POLI + PASIEN --}}
+            <div class="row g-3 mb-3 align-items-stretch">
 
                 {{-- KUNJUNGAN PER POLI --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
+                <div class="col-xl-8 d-flex">
 
-                            <div class="mb-2">
-                                <i class="bi bi-clipboard2-pulse fs-2 text-success"></i>
+                    <div class="dash-card w-100">
+                        <div class="section-body">
+
+                            <div class="section-header">
+
+                                <div>
+                                    <h5 class="section-title">
+                                        Kunjungan Per Poli
+                                    </h5>
+
+                                    <div class="subtitle">
+                                        Jumlah kunjungan masing-masing poli
+                                    </div>
+                                </div>
+
+                                <span class="section-badge">
+                                    {{ $kunjunganPerPoli->count() }} Poli
+                                </span>
+
                             </div>
 
-                            <h5 class="fw-semibold">
-                                Kunjungan Per Poli
-                            </h5>
 
-                            <canvas id="chartPoli"></canvas>
+                            @if ($kunjunganPerPoli->count())
+                                <div class="poli-chart">
+                                    <canvas id="chartPoli"></canvas>
+                                </div>
+                            @else
+                                <div class="text-center text-muted py-5">
+                                    Tidak ada data kunjungan poli
+                                </div>
+                            @endif
+
                         </div>
                     </div>
+
                 </div>
 
 
-                {{-- PASIEN BARU VS LAMA --}}
-                <div class="col-xl-4">
-                    <div class="card shadow-sm">
-                        <div class="card-body text-center">
+                {{-- PASIEN BARU & LAMA --}}
+                <div class="col-xl-4 d-flex">
 
-                            <div class="mb-2">
-                                <i class="bi bi-people-fill fs-2 text-warning"></i>
+                    <div class="dash-card w-100">
+                        <div class="section-body patient-panel">
+
+                            <div class="section-header">
+
+                                <div>
+                                    <h5 class="section-title">
+                                        Pasien Baru & Lama
+                                    </h5>
+
+                                    <div class="subtitle">
+                                        Komposisi status pasien
+                                    </div>
+                                </div>
+
+                                <span class="section-badge">
+                                    {{ number_format($totalPasien) }}
+                                </span>
+
                             </div>
 
-                            <h5 class="fw-semibold">
-                                Pasien Baru dan Pasien Lama
-                            </h5>
 
-                            <canvas id="chartPasien"></canvas>
+                            @if ($totalPasien > 0)
+                                <div class="patient-chart">
+                                    <canvas id="chartPasien"></canvas>
+                                </div>
+                            @else
+                                <div class="text-center text-muted py-5">
+                                    Tidak ada data pasien
+                                </div>
+                            @endif
+
+
+                            <div class="patient-list">
+
+                                <div class="patient-item">
+
+                                    <div class="patient-left">
+                                        <span class="dot dot-new"></span>
+                                        Pasien Baru
+                                    </div>
+
+                                    <div>
+                                        <strong>
+                                            {{ number_format($pasienBaru ?? 0) }}
+                                        </strong>
+
+                                        <small>
+                                            {{ $pct($pasienBaru ?? 0, $totalPasien) }}%
+                                        </small>
+                                    </div>
+
+                                </div>
+
+
+                                <div class="patient-item">
+
+                                    <div class="patient-left">
+                                        <span class="dot dot-old"></span>
+                                        Pasien Lama
+                                    </div>
+
+                                    <div>
+                                        <strong>
+                                            {{ number_format($pasienLama ?? 0) }}
+                                        </strong>
+
+                                        <small>
+                                            {{ $pct($pasienLama ?? 0, $totalPasien) }}%
+                                        </small>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
                         </div>
                     </div>
+
                 </div>
 
             </div>
 
 
-            {{-- ================== ROW 2 ================== --}}
-            <div class="row mt-3">
-                <div class="col-xl-12">
-                    <div class="card">
-                        <div class="card-body">
+            {{-- STATISTIK DOKTER --}}
+            <div class="dash-card mb-3">
 
-                            <h5 class="mb-4">
+                <div class="section-body">
+
+                    <div class="section-header">
+
+                        <div>
+                            <h5 class="section-title">
                                 Statistik Kunjungan Dokter
-
                             </h5>
 
-                            <div style="height: 400px; overflow-y: auto;">
-                                <canvas id="chartDokter"></canvas>
+                            <div class="subtitle">
+                                10 dokter dengan kunjungan terbanyak
                             </div>
-
                         </div>
-                    </div>
-                </div>
-                {{-- STATISTIK BULANAN --}}
-                <div class="col-xl-4 col-lg-6 col-md-12">
-                    <div class="card shadow-sm border-0 rounded-3">
-                        <div class="card-body">
 
-                            <!-- HEADER -->
-                            <h5 class="mb-4 fw-bold text-primary">
-                                Statistik Bulan
-                                {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }} {{ $tahun }}
+                        <span class="section-badge">
+                            Top 10
+                        </span>
+
+                    </div>
+
+
+                    @if ($pxdokter->count())
+                        <div class="doctor-chart">
+                            <canvas id="chartDokter"></canvas>
+                        </div>
+                    @else
+                        <div class="text-center text-muted py-5">
+                            Tidak ada data kunjungan dokter
+                        </div>
+                    @endif
+
+                </div>
+
+            </div>
+
+
+            {{-- JADWAL DOKTER --}}
+            <div class="dash-card">
+
+                <div class="section-body">
+
+                    <div class="schedule-head">
+
+                        <div>
+
+                            <h5 class="section-title">
+                                Jadwal Dokter
                             </h5>
 
-                            <!-- LIST POLI -->
-                            <div style="max-height: 300px; overflow-y: auto;">
-                                @forelse ($kunjunganPerPoli as $poli)
-                                    <div
-                                        class="d-flex justify-content-between align-items-center py-2 px-2 mb-2 rounded bg-light hover-shadow">
-                                        <span class="text-dark small">
-                                            {{ $poli->nama_poli }}
-                                        </span>
-                                        <span class="badge bg-primary fs-6">
-                                            {{ number_format($poli->total) }}
-                                        </span>
-                                    </div>
-                                @empty
-                                    <div class="text-center text-muted py-3">
-                                        Tidak ada data kunjungan
-                                    </div>
-                                @endforelse
-                            </div>
-
-                            <!-- TOTAL SECTION -->
-                            <div class="row mt-4 g-2">
-
-                                <!-- RAWAT JALAN -->
-                                <div class="col-12 col-md-4">
-                                    <div class="p-3 rounded bg-primary text-white text-center shadow-sm">
-                                        <div class="small">Rawat Jalan</div>
-                                        <div class="fw-bold fs-5">{{ number_format($rawatJalan) }}</div>
-                                    </div>
-                                </div>
-
-                                <!-- RAWAT INAP -->
-                                <div class="col-12 col-md-4">
-                                    <div class="p-3 rounded bg-success text-white text-center shadow-sm">
-                                        <div class="small">Rawat Inap</div>
-                                        <div class="fw-bold fs-5">{{ number_format($rawatInap) }}</div>
-                                    </div>
-                                </div>
-
-                                <!-- IGD -->
-                                <div class="col-12 col-md-4">
-                                    <div class="p-3 rounded bg-danger text-white text-center shadow-sm">
-                                        <div class="small">IGD & PONEK</div>
-                                        <div class="fw-bold fs-5">{{ number_format($igd) }}</div>
-                                    </div>
-                                </div>
-
+                            <div class="subtitle">
+                                {{ $tanggalMulai->format('d M Y') }}
+                                -
+                                {{ $tanggalSelesai->format('d M Y') }}
                             </div>
 
                         </div>
+
+
+                        <form method="GET" action="{{ route('dashboard') }}" class="schedule-filter">
+
+                            <input type="hidden" name="bulan" value="{{ $bulan }}">
+
+                            <input type="hidden" name="tahun" value="{{ $tahun }}">
+
+
+                            <input type="date" name="tanggal_mulai"
+                                value="{{ request('tanggal_mulai', $tanggalMulai->format('Y-m-d')) }}"
+                                class="form-control">
+
+
+                            <input type="date" name="tanggal_selesai"
+                                value="{{ request('tanggal_selesai', $tanggalSelesai->format('Y-m-d')) }}"
+                                class="form-control">
+
+
+                            <button class="btn btn-primary">
+
+                                <i class="bi bi-filter"></i>
+
+                                Filter
+
+                            </button>
+
+                        </form>
+
                     </div>
-                </div>
 
-                {{-- JADWAL DOKTER HARI INI --}}
-                <div class="col-xl-8">
-                    <div class="card">
-                        <div class="card-body">
 
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div id="jadwalContainer">
 
-                                <h5 class="mb-0">
-                                    Jadwal Dokter
-                                    <small class="text-muted">
-                                        {{ $tanggalMulai->format('d M Y') }}
-                                        -
-                                        {{ $tanggalSelesai->format('d M Y') }}
-                                    </small>
-                                </h5>
+                        @include('Page.partials.jadwal-table', [
+                            'jadwal' => $jadwal,
+                        ])
 
-                                <form method="GET" class="d-flex gap-2">
-
-                                    <input type="date" name="tanggal_mulai"
-                                        value="{{ request('tanggal_mulai', $tanggalMulai->format('Y-m-d')) }}"
-                                        class="form-control form-control-sm">
-
-                                    <input type="date" name="tanggal_selesai"
-                                        value="{{ request('tanggal_selesai', $tanggalSelesai->format('Y-m-d')) }}"
-                                        class="form-control form-control-sm">
-
-                                    <button class="btn btn-primary btn-sm">
-                                        Filter
-                                    </button>
-
-                                </form>
-
-                            </div>
-
-                            <div class="table-responsive">
-
-                                <table class="table table-hover align-middle">
-
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Dokter</th>
-                                            <th>Poli</th>
-                                            <th>Jam</th>
-                                            <th>Kuota</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-
-                                        @forelse ($jadwal as $index => $item)
-                                            @php
-                                                $kapasitas = (int) ($item->kapasitaspasien ?? 0);
-                                                $terisi = (int) ($item->total_pasien ?? 0);
-
-                                                $persen = $kapasitas > 0 ? round(($terisi / $kapasitas) * 100) : 0;
-                                                $persen = min($persen, 100);
-
-                                                if ($persen >= 100) {
-                                                    $warna = 'bg-danger';
-                                                    $status = 'Penuh';
-                                                    $badge = 'bg-danger';
-                                                } elseif ($persen >= 80) {
-                                                    $warna = 'bg-warning';
-                                                    $status = 'Hampir Penuh';
-                                                    $badge = 'bg-warning text-dark';
-                                                } else {
-                                                    $warna = 'bg-success';
-                                                    $status = 'Tersedia';
-                                                    $badge = 'bg-success';
-                                                }
-                                            @endphp
-
-                                            <tr>
-
-                                                <td>{{ $index + 1 }}</td>
-
-                                                <td>
-                                                    <strong>{{ $item->nama_dokter ?? '-' }}</strong>
-                                                </td>
-
-                                                <td>
-                                                    {{ $item->nama_poli ?? '-' }}
-                                                </td>
-
-                                                <td>
-                                                    {{ \Carbon\Carbon::parse($item->open_time)->format('H:i') }}
-                                                    -
-                                                    {{ \Carbon\Carbon::parse($item->closed_time)->format('H:i') }}
-                                                </td>
-
-                                                <td style="min-width:150px">
-
-                                                    <div class="small fw-semibold mb-1">
-                                                        {{ $terisi }} / {{ $kapasitas }}
-                                                    </div>
-
-                                                    <div class="progress" style="height:6px;">
-                                                        <div class="progress-bar {{ $warna }}"
-                                                            style="width: {{ $persen }}%">
-                                                        </div>
-                                                    </div>
-
-                                                </td>
-
-                                                <td>
-                                                    <span class="badge {{ $badge }}">
-                                                        {{ $status }}
-                                                    </span>
-                                                </td>
-
-                                            </tr>
-
-                                        @empty
-
-                                            <tr>
-                                                <td colspan="6" class="text-center text-muted">
-                                                    Tidak ada jadwal pada periode ini
-                                                </td>
-                                            </tr>
-                                        @endforelse
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-                        </div>
                     </div>
+
                 </div>
 
             </div>
@@ -333,178 +794,435 @@
         </div>
     </div>
 @endsection
+
+
 @push('script')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // ==============================
-        // DATA
-        // ==============================
-        const rawatJalan = {{ $rawatJalan ?? 0 }};
-        const rawatInap = {{ $rawatInap ?? 0 }};
+        const poliLabels = @json($kunjunganPerPoli->pluck('nama_poli')->values());
+
+        const poliData = @json($kunjunganPerPoli->pluck('total')->values());
+
+        const poliKuota = @json($kunjunganPerPoli->pluck('total_kuota')->values());
+
+        const dokterLabels = @json($pxdokter->take(10)->pluck('nama_dokter')->values());
+
+        const dokterData = @json($pxdokter->take(10)->pluck('total_pasien')->values());
+
         const pasienBaru = {{ $pasienBaru ?? 0 }};
         const pasienLama = {{ $pasienLama ?? 0 }};
-        const igd = {{ $igd ?? 0 }};
 
-        const poliLabels = {!! json_encode($kunjunganPerPoli->pluck('nama_poli')) !!};
-        const poliData = {!! json_encode($kunjunganPerPoli->pluck('total')) !!};
+        const number = value =>
+            new Intl.NumberFormat('id-ID').format(value);
 
-        const dokterLabels = {!! json_encode(
-            $pxdokter->take(10)->map(function ($d) {
-                return $d->nama_dokter;
-            }),
-        ) !!};
+        Chart.defaults.font.family =
+            "'Inter','Segoe UI',Arial,sans-serif";
 
-        const dokterData = {!! json_encode($pxdokter->take(10)->pluck('total_pasien')) !!};
+        Chart.defaults.color = '#7B8794';
 
-        // ==============================
-        // WARNA TEMA KESEHATAN
-        // ==============================
-        const warnaUtama = '#2ECC71'; // hijau
-        const warnaSekunder = '#3498DB'; // biru
-        const warnaAccent = '#1ABC9C';
 
-        // ==============================
-        // CHART DOKTER (HORIZONTAL 🔥)
-        // ==============================
-        new Chart(document.getElementById('chartDokter'), {
-            type: 'bar',
-            data: {
-                labels: dokterLabels,
-                datasets: [{
-                    label: 'Jumlah Pasien',
-                    data: dokterData,
-                    backgroundColor: warnaUtama,
-                    borderRadius: 8,
-                    barThickness: 18
-                }]
-            },
-            options: {
-                indexAxis: 'y', // 🔥 horizontal (SOLUSI nama panjang)
-                responsive: true,
-                maintainAspectRatio: false,
+        /* POLI */
+        const poliEl = document.getElementById('chartPoli');
 
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ctx.raw + ' pasien'
-                        }
-                    }
+        const quotaLabelPlugin = {
+            id: 'quotaLabelPlugin',
+
+            afterDatasetsDraw(chart) {
+                const {
+                    ctx
+                } = chart;
+                const meta = chart.getDatasetMeta(0);
+
+                ctx.save();
+                ctx.font = '600 11px Inter, Segoe UI, Arial';
+                ctx.fillStyle = '#536273';
+                ctx.textBaseline = 'middle';
+
+                meta.data.forEach((bar, index) => {
+                    const kunjungan = Number(poliData[index] ?? 0);
+                    const kuota = Number(poliKuota[index] ?? 0);
+
+                    ctx.fillText(
+                        `${number(kunjungan)} / ${number(kuota)}`,
+                        bar.x + 8,
+                        bar.y
+                    );
+                });
+
+                ctx.restore();
+            }
+        };
+
+        if (poliEl) {
+            new Chart(poliEl, {
+                type: 'bar',
+
+                plugins: [quotaLabelPlugin],
+
+                data: {
+                    labels: poliLabels,
+
+                    datasets: [{
+                        data: poliData,
+                        backgroundColor: '#20BFA9',
+                        hoverBackgroundColor: '#159F90',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        barThickness: 20,
+                        maxBarThickness: 22
+                    }]
                 },
 
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: {
-                            color: '#eee'
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    layout: {
+                        padding: {
+                            right: 100
                         }
                     },
-                    y: {
-                        grid: {
+
+                    interaction: {
+                        mode: 'index',
+                        axis: 'y',
+                        intersect: false
+                    },
+
+                    plugins: {
+                        legend: {
                             display: false
                         },
-                        ticks: {
-                            font: {
-                                size: 11
+
+                        tooltip: {
+                            mode: 'index',
+                            axis: 'y',
+                            intersect: false,
+                            displayColors: false,
+                            padding: 12,
+                            backgroundColor: '#263442',
+
+                            callbacks: {
+                                title: items => items[0].label,
+
+                                label: ctx => {
+                                    const kuota =
+                                        Number(poliKuota[ctx.dataIndex] ?? 0);
+
+                                    return [
+                                        'Kunjungan: ' + number(ctx.raw),
+                                        'Kuota: ' + number(kuota)
+                                    ];
+                                }
+                            }
+                        }
+                    },
+
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+
+                            border: {
+                                display: false
+                            },
+
+                            grid: {
+                                color: '#EDF1F5'
+                            },
+
+                            ticks: {
+                                callback: value => number(value)
+                            }
+                        },
+
+                        y: {
+                            border: {
+                                display: false
+                            },
+
+                            grid: {
+                                display: false
+                            },
+
+                            ticks: {
+                                autoSkip: false,
+                                padding: 8,
+                                color: '#536273',
+
+                                font: {
+                                    size: 14
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
-        // ==============================
-        // CHART RAWAT (DOUGHNUT)
-        // ==============================
-        new Chart(document.getElementById('chartRawat'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Rawat Jalan', 'Rawat Inap', 'IGD & PONEK'],
-                datasets: [{
-                    data: [rawatJalan, rawatInap, igd],
-                    backgroundColor: [
-                        warnaSekunder,
-                        '#5DADE2',
-                        '#AED6F1'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
 
-        // ==============================
-        // CHART POLI (BAR)
-        // ==============================
-        new Chart(document.getElementById('chartPoli'), {
-            type: 'bar',
-            data: {
-                labels: poliLabels,
-                datasets: [{
-                    label: 'Jumlah Pasien',
-                    data: poliData,
-                    backgroundColor: warnaAccent,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
+        /* DOKTER */
+        const dokterEl =
+            document.getElementById('chartDokter');
+
+        if (dokterEl) {
+
+            new Chart(dokterEl, {
+
+                type: 'bar',
+
+                data: {
+                    labels: dokterLabels,
+
+                    datasets: [{
+                        data: dokterData,
+                        backgroundColor: '#24C875',
+                        hoverBackgroundColor: '#19A963',
+                        borderRadius: 7,
+                        borderSkipped: false,
+                        barThickness: 24
+                    }]
                 },
-                scales: {
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        },
-                        grid: {
+
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    interaction: {
+                        mode: 'index',
+                        axis: 'y',
+                        intersect: false
+                    },
+
+                    plugins: {
+                        legend: {
                             display: false
+                        },
+
+                        tooltip: {
+                            mode: 'index',
+                            axis: 'y',
+                            intersect: false,
+                            displayColors: false,
+                            padding: 12,
+                            backgroundColor: '#263442',
+
+                            callbacks: {
+                                title: items =>
+                                    items[0].label,
+
+                                label: ctx =>
+                                    'Jumlah: ' +
+                                    number(ctx.raw) +
+                                    ' pasien'
+                            }
                         }
                     },
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
 
-        // ==============================
-        // CHART PASIEN (DOUGHNUT)
-        // ==============================
-        new Chart(document.getElementById('chartPasien'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Pasien Baru', 'Pasien Lama'],
-                datasets: [{
-                    data: [pasienBaru, pasienLama],
-                    backgroundColor: [
-                        warnaUtama,
-                        '#A9DFBF'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+
+                            border: {
+                                display: false
+                            },
+
+                            grid: {
+                                color: '#EDF1F5'
+                            },
+
+                            ticks: {
+                                callback: value =>
+                                    number(value)
+                            }
+                        },
+
+                        y: {
+                            border: {
+                                display: false
+                            },
+
+                            grid: {
+                                display: false
+                            },
+
+                            ticks: {
+                                color: '#536273',
+
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        }
                     }
                 }
+
+            });
+        }
+
+
+        /* PASIEN BARU & LAMA */
+        const pasienEl =
+            document.getElementById('chartPasien');
+
+        if (pasienEl) {
+
+            new Chart(pasienEl, {
+
+                type: 'doughnut',
+
+                data: {
+                    labels: [
+                        'Pasien Baru',
+                        'Pasien Lama'
+                    ],
+
+                    datasets: [{
+                        data: [
+                            pasienBaru,
+                            pasienLama
+                        ],
+
+                        backgroundColor: [
+                            '#24C875',
+                            '#A7DFBF'
+                        ],
+
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+
+                        tooltip: {
+                            displayColors: false,
+
+                            callbacks: {
+                                label: ctx => {
+
+                                    const total =
+                                        pasienBaru +
+                                        pasienLama;
+
+                                    const persen = total ?
+                                        (
+                                            ctx.raw /
+                                            total *
+                                            100
+                                        ).toFixed(1) :
+                                        0;
+
+                                    return (
+                                        ctx.label +
+                                        ': ' +
+                                        number(ctx.raw) +
+                                        ' (' +
+                                        persen +
+                                        '%)'
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+            });
+        }
+
+        /* =========================================================
+        AJAX PAGINATION JADWAL DOKTER
+        ========================================================= */
+
+        document.addEventListener('click', async function(e) {
+
+            const link = e.target.closest(
+                '#jadwalContainer .pagination a'
+            );
+
+            if (!link) return;
+
+            e.preventDefault();
+
+            const container =
+                document.getElementById('jadwalContainer');
+
+            if (!container) return;
+
+
+            /* Loading effect */
+            container.style.opacity = '.45';
+            container.style.pointerEvents = 'none';
+
+
+            try {
+
+                const response = await fetch(link.href, {
+
+                    method: 'GET',
+
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html'
+                    }
+
+                });
+
+
+                if (!response.ok) {
+                    throw new Error(
+                        'Gagal mengambil data jadwal'
+                    );
+                }
+
+
+                const html =
+                    await response.text();
+
+
+                /* Ganti tabel saja */
+                container.innerHTML = html;
+
+
+                /* Update URL tanpa reload */
+                window.history.replaceState({},
+                    '',
+                    link.href
+                );
+
+
+                /* Scroll halus ke tabel */
+                container.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    'Gagal memuat halaman jadwal dokter.'
+                );
+
+            } finally {
+
+                container.style.opacity = '1';
+                container.style.pointerEvents = 'auto';
+
             }
+
         });
     </script>
 @endpush

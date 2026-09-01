@@ -13,6 +13,31 @@
         .select2-selection__arrow {
             height: 38px !important;
         }
+
+        /* DATE RANGE - hanya tampilkan 1 kalender */
+        .daterangepicker .drp-calendar.right {
+            display: none !important;
+        }
+
+        .daterangepicker .drp-calendar.left {
+            border-left: 0 !important;
+        }
+
+        /* Bedakan Pilih Manual dari preset */
+        .daterangepicker .ranges li:last-child {
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid #e5e7eb;
+
+            font-weight: 700;
+            color: #3578c6;
+            letter-spacing: .2px;
+        }
+
+        /* Saat Pilih Manual aktif */
+        .daterangepicker .ranges li:last-child.active {
+            color: #fff;
+        }
     </style>
     <div class="content">
         <div class="container-fluid">
@@ -151,12 +176,59 @@
 
             $('#tanggal_range').daterangepicker({
 
+                startDate: moment(),
+                endDate: moment(),
+
+                linkedCalendars: false,
+
+                // dropdown bulan + tahun saat pilih manual
+                showDropdowns: true,
+
                 locale: {
-                    format: 'YYYY-MM-DD'
+                    format: 'YYYY-MM-DD',
+                    separator: ' - ',
+                    applyLabel: 'Terapkan',
+                    cancelLabel: 'Batal',
+                    customRangeLabel: 'Pilih Manual'
                 },
 
-                startDate: moment(),
-                endDate: moment()
+                ranges: {
+
+                    'Hari Ini': [
+                        moment(),
+                        moment()
+                    ],
+
+                    'Bulan Ini': [
+                        moment().startOf('month'),
+                        moment().endOf('month')
+                    ],
+
+                    'Bulan Lalu': [
+                        moment().subtract(1, 'month').startOf('month'),
+                        moment().subtract(1, 'month').endOf('month')
+                    ],
+
+                    '3 Bulan Terakhir': [
+                        moment().subtract(2, 'month').startOf('month'),
+                        moment().endOf('month')
+                    ],
+
+                    '6 Bulan Terakhir': [
+                        moment().subtract(5, 'month').startOf('month'),
+                        moment().endOf('month')
+                    ],
+
+                    'Tahun Ini': [
+                        moment().startOf('year'),
+                        moment().endOf('year')
+                    ],
+
+                    'Tahun Lalu': [
+                        moment().subtract(1, 'year').startOf('year'),
+                        moment().subtract(1, 'year').endOf('year')
+                    ]
+                }
 
             });
             $('.select2').select2({
