@@ -278,14 +278,34 @@ class DashController extends Controller
         | KUNJUNGAN DOKTER
         |--------------------------------------------------------------------------
         */
+        $kuotaPerDokter = DB::table('rsv_schedules as rs')
+            ->select(
+                'rs.dokter_id',
+                'rs.section_id',
+                DB::raw('SUM(COALESCE(rs.kapasitaspasien, 0)) as total_kuota')
+            )
+            ->whereBetween('rs.date', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString()
+            ])
+            ->groupBy('rs.dokter_id', 'rs.section_id');
+
         $pxdokter = DB::table('tr_pxregistrations as t')
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
+            ->leftJoinSub($kuotaPerDokter, 'q', function ($join) {
+                $join->on('q.dokter_id', '=', 't.dokter_id')
+                    ->on('q.section_id', '=', 't.section_id');
+
+            })
+
             ->select(
                 'u.name as nama_dokter',
                 's.title as nama_poli',
-                DB::raw('COUNT(t.id) as total_pasien')
+                DB::raw('COUNT(t.id) as total_pasien'),
+                DB::raw('MAX(COALESCE(q.total_kuota, 0)) as total_kuota')
+
             )
 
             ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
@@ -334,37 +354,53 @@ class DashController extends Controller
         $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
 
         /*
-        |--------------------------------------------------------------------------
-        | TOTAL PASIEN PER DOKTER + POLI DALAM 1 BULAN
-        |--------------------------------------------------------------------------
-        */
+     |--------------------------------------------------------------------------
+     | TOTAL PASIEN PER DOKTER + POLI DALAM 1 BULAN
+     |--------------------------------------------------------------------------
+     | Mengikuti filter Statistik Kunjungan Dokter di Dashboard.
+     | 1 row = 1 dokter + 1 poli.
+     */
 
-        $registrasi = DB::table('tr_pxregistrations as r')
+        $pasienPerDokter = DB::table('tr_pxregistrations as r')
+            ->join('sections as sec_reg', 'r.section_id', '=', 'sec_reg.id')
+
             ->selectRaw('
-                DATE(r.schedule_date) as tanggal,
                 r.dokter_id,
                 r.section_id,
                 COUNT(r.id) as total_pasien
-    ')
+            ')
 
             ->whereBetween('r.schedule_date', [
                 $awalBulan,
                 $akhirBulan
             ])
 
+            ->where('r.inpatient_status', 0)
+
+            ->whereNotIn('sec_reg.title', [
+                'IGD 24 JAM',
+                'PONEK'
+            ])
+
+            ->whereIn('r.source_reg', [
+                'ADMISI',
+                'MJKN',
+                'NULL'
+            ])
+
             ->where('r.status', 1)
-            ->where('r.parent_id', '0')
+            ->where('r.parent_id', 0)
             ->where('r.status_batal', 0)
 
-            ->groupByRaw('
-                DATE(r.schedule_date),
-                r.dokter_id,
-                r.section_id
-    ');
+            ->groupBy(
+                'r.dokter_id',
+                'r.section_id'
+            );
+
 
         /*
         |--------------------------------------------------------------------------
-        | TOTAL KUOTA DOKTER + POLI DALAM 1 BULAN
+        | JADWAL + KUOTA PER DOKTER + POLI
         |--------------------------------------------------------------------------
         */
 
@@ -373,26 +409,35 @@ class DashController extends Controller
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
 
-            ->leftJoinSub($registrasi, 'r', function ($join) {
-                $join->on('r.dokter_id', '=', 's.dokter_id')
-                    ->on('r.section_id', '=', 's.section_id')
-                    ->on('r.tanggal', '=', DB::raw('DATE(s.date)'));
+            ->leftJoinSub($pasienPerDokter, 'p', function ($join) {
+
+                $join->on(
+                    'p.dokter_id',
+                    '=',
+                    's.dokter_id'
+                )
+
+                    ->on(
+                        'p.section_id',
+                        '=',
+                        's.section_id'
+                    );
+
             })
 
             ->selectRaw('
-            s.dokter_id,
-            s.section_id,
+                s.dokter_id,
+                s.section_id,
 
-            u.name as nama_dokter,
-            sec.title as nama_poli,
+                u.name as nama_dokter,
+                sec.title as nama_poli,
 
-            s.open_time,
-            s.closed_time,
+                COUNT(DISTINCT DATE(s.date)) as total_hari_layanan,
 
-            SUM(COALESCE(s.kapasitaspasien, 0)) as total_kuota,
+                SUM(COALESCE(s.kapasitaspasien, 0)) as total_kuota,
 
-            SUM(COALESCE(r.total_pasien, 0)) as total_pasien
-        ')
+                COALESCE(MAX(p.total_pasien), 0) as total_pasien
+            ')
 
             ->whereBetween('s.date', [
                 $awalBulan->toDateString(),
@@ -411,13 +456,10 @@ class DashController extends Controller
                 's.dokter_id',
                 's.section_id',
                 'u.name',
-                'sec.title',
-                's.open_time',
-                's.closed_time'
+                'sec.title'
             )
 
-            ->orderBy('u.name')
-            ->orderBy('s.open_time');
+            ->orderBy('u.name');
         /*
           |--------------------------------------------------------------------------
           | DATATABLE
@@ -425,21 +467,7 @@ class DashController extends Controller
           */
 
         return DataTables::of($query)
-
             ->addIndexColumn()
-
-            ->addColumn('jam', function ($row) {
-
-                $buka = $row->open_time
-                    ? Carbon::parse($row->open_time)->format('H:i')
-                    : '-';
-
-                $tutup = $row->closed_time
-                    ? Carbon::parse($row->closed_time)->format('H:i')
-                    : '-';
-
-                return $buka . ' - ' . $tutup;
-            })
             ->make(true);
     }
     public function view_kunjungan_poli()
