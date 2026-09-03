@@ -789,6 +789,8 @@
 
         const dokterData = @json($pxdokter->take(10)->pluck('total_pasien')->values());
 
+        const dokterKuota = @json($pxdokter->take(10)->pluck('total_kuota')->values());
+
         const pasienBaru = {{ $pasienBaru ?? 0 }};
         const pasienLama = {{ $pasienLama ?? 0 }};
 
@@ -945,22 +947,51 @@
         const dokterEl =
             document.getElementById('chartDokter');
 
+        const doctorQuotaLabelPlugin = {
+            id: 'doctorQuotaLabelPlugin',
+
+            afterDatasetsDraw(chart) {
+                const {
+                    ctx
+                } = chart;
+                const meta = chart.getDatasetMeta(0);
+
+                ctx.save();
+                ctx.font = '600 11px Inter, Segoe UI, Arial';
+                ctx.fillStyle = '#536273';
+                ctx.textBaseline = 'middle';
+
+                meta.data.forEach((bar, index) => {
+                    const pasien = Number(dokterData[index] ?? 0);
+                    const kuota = Number(dokterKuota[index] ?? 0);
+
+                    ctx.fillText(
+                        `${number(pasien)} / ${number(kuota)}`,
+                        bar.x + 8,
+                        bar.y
+                    );
+                });
+
+                ctx.restore();
+            }
+        };
+
         if (dokterEl) {
-
             new Chart(dokterEl, {
-
                 type: 'bar',
+
+                plugins: [doctorQuotaLabelPlugin],
 
                 data: {
                     labels: dokterLabels,
-
                     datasets: [{
                         data: dokterData,
                         backgroundColor: '#24C875',
                         hoverBackgroundColor: '#19A963',
-                        borderRadius: 7,
+                        borderRadius: 6,
                         borderSkipped: false,
-                        barThickness: 24
+                        barThickness: 20,
+                        maxBarThickness: 22
                     }]
                 },
 
@@ -968,6 +999,12 @@
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+
+                    layout: {
+                        padding: {
+                            right: 100
+                        }
+                    },
 
                     interaction: {
                         mode: 'index',
@@ -989,13 +1026,16 @@
                             backgroundColor: '#263442',
 
                             callbacks: {
-                                title: items =>
-                                    items[0].label,
+                                title: items => items[0].label,
 
-                                label: ctx =>
-                                    'Jumlah: ' +
-                                    number(ctx.raw) +
-                                    ' pasien'
+                                label: ctx => {
+                                    const kuota = Number(dokterKuota[ctx.dataIndex] ?? 0);
+
+                                    return [
+                                        'Kunjungan: ' + number(ctx.raw),
+                                        'Kuota: ' + number(kuota)
+                                    ];
+                                }
                             }
                         }
                     },
@@ -1003,41 +1043,23 @@
                     scales: {
                         x: {
                             beginAtZero: true,
-
                             border: {
                                 display: false
                             },
-
                             grid: {
                                 color: '#EDF1F5'
-                            },
-
-                            ticks: {
-                                callback: value =>
-                                    number(value)
                             }
                         },
-
                         y: {
                             border: {
                                 display: false
                             },
-
                             grid: {
                                 display: false
-                            },
-
-                            ticks: {
-                                color: '#536273',
-
-                                font: {
-                                    size: 13
-                                }
                             }
                         }
                     }
                 }
-
             });
         }
 
