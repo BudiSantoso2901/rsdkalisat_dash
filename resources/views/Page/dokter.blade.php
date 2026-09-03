@@ -356,7 +356,7 @@
                                             <th width="5%">No</th>
                                             <th>Dokter</th>
                                             <th>Poli</th>
-                                            <th>Jam Layanan</th>
+                                            <th>Hari Layanan</th>
                                             <th>Pasien / Kuota</th>
                                             <th>Status</th>
                                         </tr>
@@ -489,19 +489,19 @@
                     },
                     {
                         targets: 2,
-                        width: '24%'
+                        width: '23%'
                     },
                     {
                         targets: 3,
-                        width: '15%'
+                        width: '10%'
                     },
                     {
                         targets: 4,
-                        width: '16%'
+                        width: '18%'
                     },
                     {
                         targets: 5,
-                        width: '10%'
+                        width: '15%'
                     }
                 ],
 
@@ -531,14 +531,34 @@
                         name: 'sec.title'
                     },
                     {
-                        data: 'jam',
+                        data: 'total_hari_layanan',
                         orderable: false,
-                        searchable: false
+                        searchable: false,
+                        className: 'text-center',
+
+                        render: function(data) {
+
+                            const bulan = Number($('#bulan').val());
+                            const tahun = Number($('#tahun').val());
+
+                            const totalHariBulan = new Date(
+                                tahun,
+                                bulan,
+                                0
+                            ).getDate();
+
+                            const hariLayanan = Number(data ?? 0);
+
+                            return `${hariLayanan} / ${totalHariBulan} Hari`;
+
+                        }
                     },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
+                        className: 'text-center align-middle',
+
 
                         render: function(data, type, row) {
 
