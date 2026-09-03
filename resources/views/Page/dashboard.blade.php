@@ -267,6 +267,21 @@
             width: 145px;
         }
 
+        .schedule-filter .jadwal-period {
+            width: 260px !important;
+            height: 38px;
+
+            padding-right: 40px;
+
+            cursor: pointer;
+            background-color: #fff;
+
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238290a3' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 14px;
+        }
+
         .schedule-table {
             margin: 0;
         }
@@ -314,7 +329,7 @@
             white-space: nowrap;
         }
 
-        .available {
+        .status.available {
             color: #159455;
             background: #e8f9f0;
         }
@@ -422,6 +437,36 @@
             .schedule-pagination {
                 align-items: flex-start !important;
                 flex-direction: column;
+            }
+
+            .jadwal-date-wrap {
+                position: relative;
+                width: 260px;
+                flex: 0 0 260px;
+            }
+
+            .schedule-filter .jadwal-period {
+                width: 100% !important;
+                height: 38px;
+                padding-right: 40px;
+                cursor: pointer;
+                background: #fff;
+            }
+
+            .jadwal-calendar-icon {
+                position: absolute;
+                top: 50%;
+                right: 13px;
+                transform: translateY(-50%);
+
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                color: #8290a3;
+                font-size: 14px;
+
+                pointer-events: none;
             }
         }
     </style>
@@ -725,72 +770,6 @@
                 </div>
 
             </div>
-
-
-            {{-- JADWAL DOKTER --}}
-            <div class="dash-card">
-
-                <div class="section-body">
-
-                    <div class="schedule-head">
-
-                        <div>
-
-                            <h5 class="section-title">
-                                Jadwal Dokter
-                            </h5>
-
-                            <div class="subtitle">
-                                {{ $tanggalMulai->format('d M Y') }}
-                                -
-                                {{ $tanggalSelesai->format('d M Y') }}
-                            </div>
-
-                        </div>
-
-
-                        <form method="GET" action="{{ route('dashboard') }}" class="schedule-filter">
-
-                            <input type="hidden" name="bulan" value="{{ $bulan }}">
-
-                            <input type="hidden" name="tahun" value="{{ $tahun }}">
-
-
-                            <input type="date" name="tanggal_mulai"
-                                value="{{ request('tanggal_mulai', $tanggalMulai->format('Y-m-d')) }}"
-                                class="form-control">
-
-
-                            <input type="date" name="tanggal_selesai"
-                                value="{{ request('tanggal_selesai', $tanggalSelesai->format('Y-m-d')) }}"
-                                class="form-control">
-
-
-                            <button class="btn btn-primary">
-
-                                <i class="bi bi-filter"></i>
-
-                                Filter
-
-                            </button>
-
-                        </form>
-
-                    </div>
-
-
-                    <div id="jadwalContainer">
-
-                        @include('Page.partials.jadwal-table', [
-                            'jadwal' => $jadwal,
-                        ])
-
-                    </div>
-
-                </div>
-
-            </div>
-
         </div>
     </div>
 @endsection
@@ -809,6 +788,8 @@
         const dokterLabels = @json($pxdokter->take(10)->pluck('nama_dokter')->values());
 
         const dokterData = @json($pxdokter->take(10)->pluck('total_pasien')->values());
+
+        const dokterKuota = @json($pxdokter->take(10)->pluck('total_kuota')->values());
 
         const pasienBaru = {{ $pasienBaru ?? 0 }};
         const pasienLama = {{ $pasienLama ?? 0 }};
@@ -966,22 +947,51 @@
         const dokterEl =
             document.getElementById('chartDokter');
 
+        const doctorQuotaLabelPlugin = {
+            id: 'doctorQuotaLabelPlugin',
+
+            afterDatasetsDraw(chart) {
+                const {
+                    ctx
+                } = chart;
+                const meta = chart.getDatasetMeta(0);
+
+                ctx.save();
+                ctx.font = '600 11px Inter, Segoe UI, Arial';
+                ctx.fillStyle = '#536273';
+                ctx.textBaseline = 'middle';
+
+                meta.data.forEach((bar, index) => {
+                    const pasien = Number(dokterData[index] ?? 0);
+                    const kuota = Number(dokterKuota[index] ?? 0);
+
+                    ctx.fillText(
+                        `${number(pasien)} / ${number(kuota)}`,
+                        bar.x + 8,
+                        bar.y
+                    );
+                });
+
+                ctx.restore();
+            }
+        };
+
         if (dokterEl) {
-
             new Chart(dokterEl, {
-
                 type: 'bar',
+
+                plugins: [doctorQuotaLabelPlugin],
 
                 data: {
                     labels: dokterLabels,
-
                     datasets: [{
                         data: dokterData,
                         backgroundColor: '#24C875',
                         hoverBackgroundColor: '#19A963',
-                        borderRadius: 7,
+                        borderRadius: 6,
                         borderSkipped: false,
-                        barThickness: 24
+                        barThickness: 20,
+                        maxBarThickness: 22
                     }]
                 },
 
@@ -989,6 +999,12 @@
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+
+                    layout: {
+                        padding: {
+                            right: 100
+                        }
+                    },
 
                     interaction: {
                         mode: 'index',
@@ -1010,13 +1026,16 @@
                             backgroundColor: '#263442',
 
                             callbacks: {
-                                title: items =>
-                                    items[0].label,
+                                title: items => items[0].label,
 
-                                label: ctx =>
-                                    'Jumlah: ' +
-                                    number(ctx.raw) +
-                                    ' pasien'
+                                label: ctx => {
+                                    const kuota = Number(dokterKuota[ctx.dataIndex] ?? 0);
+
+                                    return [
+                                        'Kunjungan: ' + number(ctx.raw),
+                                        'Kuota: ' + number(kuota)
+                                    ];
+                                }
                             }
                         }
                     },
@@ -1024,41 +1043,23 @@
                     scales: {
                         x: {
                             beginAtZero: true,
-
                             border: {
                                 display: false
                             },
-
                             grid: {
                                 color: '#EDF1F5'
-                            },
-
-                            ticks: {
-                                callback: value =>
-                                    number(value)
                             }
                         },
-
                         y: {
                             border: {
                                 display: false
                             },
-
                             grid: {
                                 display: false
-                            },
-
-                            ticks: {
-                                color: '#536273',
-
-                                font: {
-                                    size: 13
-                                }
                             }
                         }
                     }
                 }
-
             });
         }
 
@@ -1139,90 +1140,5 @@
 
             });
         }
-
-        /* =========================================================
-        AJAX PAGINATION JADWAL DOKTER
-        ========================================================= */
-
-        document.addEventListener('click', async function(e) {
-
-            const link = e.target.closest(
-                '#jadwalContainer .pagination a'
-            );
-
-            if (!link) return;
-
-            e.preventDefault();
-
-            const container =
-                document.getElementById('jadwalContainer');
-
-            if (!container) return;
-
-
-            /* Loading effect */
-            container.style.opacity = '.45';
-            container.style.pointerEvents = 'none';
-
-
-            try {
-
-                const response = await fetch(link.href, {
-
-                    method: 'GET',
-
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/html'
-                    }
-
-                });
-
-
-                if (!response.ok) {
-                    throw new Error(
-                        'Gagal mengambil data jadwal'
-                    );
-                }
-
-
-                const html =
-                    await response.text();
-
-
-                /* Ganti tabel saja */
-                container.innerHTML = html;
-
-
-                /* Update URL tanpa reload */
-                window.history.replaceState({},
-                    '',
-                    link.href
-                );
-
-
-                /* Scroll halus ke tabel */
-                container.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'nearest'
-                });
-
-
-            } catch (error) {
-
-                console.error(error);
-
-                alert(
-                    'Gagal memuat halaman jadwal dokter.'
-                );
-
-            } finally {
-
-                container.style.opacity = '1';
-                container.style.pointerEvents = 'auto';
-
-            }
-
-        });
     </script>
 @endpush
