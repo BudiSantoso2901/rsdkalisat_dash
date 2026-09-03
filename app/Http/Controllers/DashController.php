@@ -17,7 +17,34 @@ class DashController extends Controller
 
     public function view_dokter()
     {
-        return view('Page.dokter');
+        $filterPoli = DB::table('rsv_schedules as s')
+            ->join('sections as sec', 's.section_id', '=', 'sec.id')
+            ->select(
+                'sec.id',
+                'sec.title'
+            )
+            ->distinct()
+            ->orderBy('sec.title')
+            ->get();
+
+
+        $filterDokter = DB::table('rsv_schedules as s')
+            ->join('users as u', 's.dokter_id', '=', 'u.id')
+            ->select(
+                'u.id',
+                'u.name',
+                's.section_id'
+            )
+            ->whereNotNull('u.name')
+            ->distinct()
+            ->orderBy('u.name')
+            ->get();
+
+
+        return view('Page.dokter', compact(
+            'filterPoli',
+            'filterDokter'
+        ));
     }
     public function view_tabel_pasien()
     {
@@ -100,73 +127,6 @@ class DashController extends Controller
         // Range bulan untuk seluruh statistik dashboard
         $awalBulan = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
         $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
-
-        // Range khusus jadwal dokter
-        $tanggalMulai = $request->tanggal_mulai
-            ? Carbon::parse($request->tanggal_mulai)->startOfDay()
-            : Carbon::today()->startOfDay();
-
-        $tanggalSelesai = $request->tanggal_selesai
-            ? Carbon::parse($request->tanggal_selesai)->endOfDay()
-            : Carbon::today()->endOfDay();
-
-        /*
-        |--------------------------------------------------------------------------
-        | JADWAL DOKTER
-        |--------------------------------------------------------------------------
-        */
-        $jadwal = DB::table('rsv_schedules as s')
-            ->join('sections as sec', 's.section_id', '=', 'sec.id')
-            ->join('users as u', 's.dokter_id', '=', 'u.id')
-
-            ->leftJoin('tr_pxregistrations as r', function ($join) use ($tanggalMulai, $tanggalSelesai) {
-                $join->on('r.section_id', '=', 's.section_id')
-                    ->on('r.dokter_id', '=', 's.dokter_id')
-
-                    // Batasi data pasien hanya ke range yang diminta
-                    ->whereBetween('r.schedule_date', [$tanggalMulai, $tanggalSelesai])
-
-                    // Pasien harus berada pada tanggal jadwal yang sama
-                    ->whereRaw('r.schedule_date >= s.date')
-                    ->whereRaw('r.schedule_date < DATE_ADD(s.date, INTERVAL 1 DAY)')
-
-                    ->where('r.status', 1)
-                    ->where('r.parent_id', '0')
-                    ->where('r.status_batal', 0);
-            })
-
-            ->select(
-                's.id',
-                's.date as tanggal_jadwal',
-                'u.name as nama_dokter',
-                'sec.title as nama_poli',
-                's.open_time',
-                's.closed_time',
-                's.kapasitaspasien',
-                DB::raw('COUNT(r.id) as total_pasien')
-            )
-
-            ->whereBetween('s.date', [$tanggalMulai, $tanggalSelesai])
-
-            ->groupBy(
-                's.id',
-                's.date',
-                'u.name',
-                'sec.title',
-                's.open_time',
-                's.closed_time',
-                's.kapasitaspasien'
-            )
-
-            ->orderBy('s.date')
-            ->orderBy('s.open_time')
-            ->paginate(10)
-            ->withQueryString();
-
-        // Kalau request AJAX tabel jadwal, jangan jalankan statistik dashboard
-        if ($request->ajax()) {
-            return view('Page.partials.jadwal-table', compact('jadwal'));
-        }
 
         /*
         |--------------------------------------------------------------------------
@@ -350,9 +310,6 @@ class DashController extends Controller
         }
 
         return view('Page.dashboard', compact(
-            'jadwal',
-            'tanggalMulai',
-            'tanggalSelesai',
             'kunjunganPerPoli',
             'rawatJalan',
             'rawatInap',
@@ -370,140 +327,119 @@ class DashController extends Controller
 
     public function getJadwalDokter(Request $request)
     {
-        $tanggalMulai = $request->filled('start_date')
-            ? Carbon::parse($request->start_date)->startOfDay()
-            : Carbon::today()->startOfDay();
+        $bulan = (int) ($request->bulan ?? now()->month);
+        $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalSelesai = $request->filled('end_date')
-            ? Carbon::parse($request->end_date)->endOfDay()
-            : Carbon::today()->endOfDay();
+        $awalBulan = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
+        $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
 
         /*
         |--------------------------------------------------------------------------
-        | AGREGASI PASIEN PER TANGGAL + DOKTER + POLI
+        | TOTAL PASIEN PER DOKTER + POLI DALAM 1 BULAN
         |--------------------------------------------------------------------------
-        |
-        | Sebelum join ke jadwal, pasien dihitung dulu per tanggal.
-        | Ini mencegah total seluruh range masuk ke setiap tanggal jadwal.
-        |
         */
+
         $registrasi = DB::table('tr_pxregistrations as r')
             ->selectRaw('
-            DATE(r.schedule_date) as tanggal,
-            r.section_id,
-            r.dokter_id,
-            COUNT(r.id) as total_pasien
-        ')
+                DATE(r.schedule_date) as tanggal,
+                r.dokter_id,
+                r.section_id,
+                COUNT(r.id) as total_pasien
+    ')
+
             ->whereBetween('r.schedule_date', [
-                $tanggalMulai,
-                $tanggalSelesai
+                $awalBulan,
+                $akhirBulan
             ])
+
             ->where('r.status', 1)
             ->where('r.parent_id', '0')
             ->where('r.status_batal', 0)
+
             ->groupByRaw('
-            DATE(r.schedule_date),
-            r.section_id,
-            r.dokter_id
-        ');
+                DATE(r.schedule_date),
+                r.dokter_id,
+                r.section_id
+    ');
 
         /*
         |--------------------------------------------------------------------------
-        | JADWAL DOKTER
+        | TOTAL KUOTA DOKTER + POLI DALAM 1 BULAN
         |--------------------------------------------------------------------------
         */
+
         $query = DB::table('rsv_schedules as s')
+
             ->join('sections as sec', 's.section_id', '=', 'sec.id')
             ->join('users as u', 's.dokter_id', '=', 'u.id')
 
             ->leftJoinSub($registrasi, 'r', function ($join) {
-                $join->on('r.section_id', '=', 's.section_id')
-                    ->on('r.dokter_id', '=', 's.dokter_id')
+                $join->on('r.dokter_id', '=', 's.dokter_id')
+                    ->on('r.section_id', '=', 's.section_id')
                     ->on('r.tanggal', '=', DB::raw('DATE(s.date)'));
             })
 
-            ->select([
-                's.id',
-                's.title as nama_dokter',
-                'u.name',
-                'sec.code',
-                'sec.prefix',
-                'sec.title as nama_poli',
-                's.kodesubspesialis',
-                's.date',
-                's.open_time',
-                's.closed_time',
-                's.kuotajkn',
-                's.kuotanonjkn',
-                's.kapasitaspasien',
+            ->selectRaw('
+            s.dokter_id,
+            s.section_id,
 
-                DB::raw('COALESCE(r.total_pasien, 0) as total_pasien')
-            ])
+            u.name as nama_dokter,
+            sec.title as nama_poli,
+
+            s.open_time,
+            s.closed_time,
+
+            SUM(COALESCE(s.kapasitaspasien, 0)) as total_kuota,
+
+            SUM(COALESCE(r.total_pasien, 0)) as total_pasien
+        ')
 
             ->whereBetween('s.date', [
-                $tanggalMulai->toDateString(),
-                $tanggalSelesai->toDateString()
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString()
             ])
 
-            ->orderBy('s.date')
-            ->orderBy('s.open_time');
+            ->when($request->filled('poli'), function ($query) use ($request) {
+                $query->where('s.section_id', $request->poli);
+            })
 
+            ->when($request->filled('dokter'), function ($query) use ($request) {
+                $query->where('s.dokter_id', $request->dokter);
+            })
+
+            ->groupBy(
+                's.dokter_id',
+                's.section_id',
+                'u.name',
+                'sec.title',
+                's.open_time',
+                's.closed_time'
+            )
+
+            ->orderBy('u.name')
+            ->orderBy('s.open_time');
         /*
-        |--------------------------------------------------------------------------
-        | DATATABLE
-        |--------------------------------------------------------------------------
-        */
+          |--------------------------------------------------------------------------
+          | DATATABLE
+          |--------------------------------------------------------------------------
+          */
+
         return DataTables::of($query)
 
             ->addIndexColumn()
 
-            ->editColumn('date', function ($row) {
-                return $row->date
-                    ? Carbon::parse($row->date)->translatedFormat('l') . '<br>' .
-                    Carbon::parse($row->date)->translatedFormat('d F Y')
-                    : '-';
-            })
+            ->addColumn('jam', function ($row) {
 
-            ->editColumn('open_time', function ($row) {
-                return $row->open_time
+                $buka = $row->open_time
                     ? Carbon::parse($row->open_time)->format('H:i')
                     : '-';
-            })
 
-            ->editColumn('closed_time', function ($row) {
-                return $row->closed_time
+                $tutup = $row->closed_time
                     ? Carbon::parse($row->closed_time)->format('H:i')
                     : '-';
+
+                return $buka . ' - ' . $tutup;
             })
-
-            ->addColumn('kuota_progress', function ($row) {
-
-                $kapasitas = (int) ($row->kapasitaspasien ?? 0);
-                $terisi = (int) ($row->total_pasien ?? 0);
-
-                $persen = $kapasitas > 0
-                    ? min(round(($terisi / $kapasitas) * 100), 100)
-                    : 0;
-
-                $warna = $persen >= 100
-                    ? 'bg-danger'
-                    : ($persen >= 80 ? 'bg-warning' : 'bg-success');
-
-                return '
-                <div style="min-width:130px">
-                    <div class="fw-semibold mb-1">
-                        ' . $terisi . ' / ' . $kapasitas . '
-                    </div>
-
-                    <div class="progress" style="height:6px;">
-                        <div class="progress-bar ' . $warna . '"
-                             style="width:' . $persen . '%">
-                        </div>
-                    </div>
-                </div>';
-            })
-
-            ->rawColumns(['date', 'kuota_progress'])
             ->make(true);
     }
     public function view_kunjungan_poli()
