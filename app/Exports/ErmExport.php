@@ -249,7 +249,7 @@ class ErmExport implements FromCollection, WithHeadings
 
                 $tanggal = function ($value) {
                     return $value
-                        ? Carbon::parse($value)->format('d-m-Y H:i')
+                        ? Carbon::parse($value)->format('d-m-Y')
                         : '-';
                 };
 
