@@ -350,8 +350,66 @@ class DashController extends Controller
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        $awalBulan = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
-        $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
+        $awalBulan = Carbon::createFromDate(
+            $tahun,
+            $bulan,
+            1
+        )->startOfDay();
+
+        $akhirBulan = $awalBulan
+            ->copy()
+            ->endOfMonth()
+            ->endOfDay();
+
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)->startOfDay()
+            : null;
+
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)->endOfDay()
+            : null;
+
+        /*
+         * Validasi hanya boleh dalam
+         * bulan + tahun terpilih
+         */
+        if ($startDate && $endDate) {
+
+            $validStart =
+                $startDate->month === $bulan &&
+                $startDate->year === $tahun;
+
+            $validEnd =
+                $endDate->month === $bulan &&
+                $endDate->year === $tahun;
+
+            if (!$validStart || !$validEnd) {
+
+                return response()->json([
+                    'message' =>
+                        'Rentang tanggal harus berada dalam bulan dan tahun terpilih.'
+                ], 422);
+            }
+
+
+            if ($startDate->gt($endDate)) {
+
+                return response()->json([
+                    'message' =>
+                        'Tanggal mulai tidak boleh setelah tanggal selesai.'
+                ], 422);
+            }
+        }
+
+        $awalPeriode =
+            ($startDate && $endDate)
+            ? $startDate
+            : $awalBulan;
+
+        $akhirPeriode =
+            ($startDate && $endDate)
+            ? $endDate
+            : $akhirBulan;
 
         /*
      |--------------------------------------------------------------------------
@@ -371,8 +429,8 @@ class DashController extends Controller
             ')
 
             ->whereBetween('r.schedule_date', [
-                $awalBulan,
-                $akhirBulan
+                $awalPeriode,
+                $akhirPeriode
             ])
 
             ->where('r.inpatient_status', 0)
@@ -440,8 +498,8 @@ class DashController extends Controller
             ')
 
             ->whereBetween('s.date', [
-                $awalBulan->toDateString(),
-                $akhirBulan->toDateString()
+                $awalPeriode->toDateString(),
+                $akhirPeriode->toDateString()
             ])
 
             ->when($request->filled('poli'), function ($query) use ($request) {
