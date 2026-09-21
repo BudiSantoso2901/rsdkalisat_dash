@@ -84,6 +84,21 @@
             min-width: 300px;
         }
 
+        /* Date range hanya menampilkan 1 kalender */
+        .daterangepicker .drp-calendar.right {
+            display: none !important;
+        }
+
+        .daterangepicker {
+            width: auto !important;
+        }
+
+        /* Bulan sudah dikunci oleh filter Bulan + Tahun */
+        .daterangepicker .calendar-table th.prev,
+        .daterangepicker .calendar-table th.next {
+            visibility: hidden !important;
+        }
+
         /* Select2 mengikuti lebar field */
         .filter-poli .select2-container,
         .filter-dokter .select2-container {
@@ -254,7 +269,7 @@
                                         Jadwal Dokter & Kuota
                                     </h4>
 
-                                    <p>
+                                    <p id="doctorSubtitle">
                                         Rekap pasien dan kapasitas layanan dokter per bulan
                                     </p>
                                 </div>
@@ -266,14 +281,11 @@
 
                                 <div class="doctor-filter-inner">
 
+                                    {{-- BULAN --}}
                                     <div class="doctor-filter-field">
-
-                                        <label>
-                                            Bulan
-                                        </label>
+                                        <label>Bulan</label>
 
                                         <select id="bulan" class="form-control">
-
                                             @for ($i = 1; $i <= 12; $i++)
                                                 <option value="{{ $i }}"
                                                     {{ $i == now()->month ? 'selected' : '' }}>
@@ -282,30 +294,38 @@
 
                                                 </option>
                                             @endfor
-
                                         </select>
-
                                     </div>
 
 
+                                    {{-- TAHUN --}}
                                     <div class="doctor-filter-field">
-
-                                        <label>
-                                            Tahun
-                                        </label>
+                                        <label>Tahun</label>
 
                                         <select id="tahun" class="form-control">
-
                                             @for ($t = now()->year; $t >= now()->year - 20; $t--)
                                                 <option value="{{ $t }}">
                                                     {{ $t }}
                                                 </option>
                                             @endfor
-
                                         </select>
-
                                     </div>
 
+                                    {{-- RENTANG TANGGAL --}}
+                                    <div class="doctor-filter-field filter-tanggal">
+                                        <label>
+                                            Rentang Tanggal
+                                            <span class="text-muted fw-normal">(Opsional)</span>
+                                        </label>
+
+                                        <input type="text" id="tanggal_range" class="form-control"
+                                            placeholder="Pilih rentang tanggal" readonly>
+
+                                        <input type="hidden" id="start_date">
+                                        <input type="hidden" id="end_date">
+                                    </div>
+
+                                    {{-- POLI --}}
                                     <div class="doctor-filter-field filter-poli">
                                         <label>Poli</label>
 
@@ -321,6 +341,7 @@
                                     </div>
 
 
+                                    {{-- DOKTER --}}
                                     <div class="doctor-filter-field filter-dokter">
                                         <label>Dokter</label>
 
@@ -330,13 +351,16 @@
                                     </div>
 
 
-                                    <button id="filter" class="btn btn-primary">
+                                    {{-- APPLY --}}
+                                    <button type="button" id="filter" class="btn btn-primary">
+
                                         <i class="bi bi-filter me-1"></i>
                                         Tampilkan
                                     </button>
 
+                                    {{-- RESET SEMUA --}}
+                                    <button type="button" id="reset" class="btn btn-light border">
 
-                                    <button id="reset" class="btn btn-light border">
                                         <i class="bi bi-arrow-counterclockwise me-1"></i>
                                         Reset
                                     </button>
@@ -377,11 +401,143 @@
     </div>
 @endsection
 @push('script')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script>
         $(document).ready(function() {
 
             const semuaDokter = @json($filterDokter);
 
+            function initTanggalRange() {
+
+                const bulan = Number($('#bulan').val());
+                const tahun = Number($('#tahun').val());
+
+                const minDate = moment([
+                    tahun,
+                    bulan - 1,
+                    1
+                ]).startOf('day');
+
+                const maxDate = minDate
+                    .clone()
+                    .endOf('month')
+                    .endOf('day');
+
+                const input = $('#tanggal_range');
+
+                /*
+                 * Hapus instance lama kalau ada
+                 * misalnya setelah bulan/tahun diganti.
+                 */
+                const existingPicker =
+                    input.data('daterangepicker');
+
+                if (existingPicker) {
+                    existingPicker.remove();
+                }
+
+
+                input.daterangepicker({
+
+                    autoUpdateInput: false,
+
+                    startDate: minDate,
+                    endDate: maxDate,
+
+                    minDate: minDate,
+                    maxDate: maxDate,
+
+                    linkedCalendars: false,
+                    showDropdowns: false,
+
+                    opens: 'right',
+
+                    locale: {
+                        format: 'DD/MM/YYYY',
+                        separator: ' - ',
+                        applyLabel: 'Terapkan',
+                        cancelLabel: 'Batal',
+
+                        daysOfWeek: [
+                            'Min',
+                            'Sen',
+                            'Sel',
+                            'Rab',
+                            'Kam',
+                            'Jum',
+                            'Sab'
+                        ],
+
+                        monthNames: [
+                            'Januari',
+                            'Februari',
+                            'Maret',
+                            'April',
+                            'Mei',
+                            'Juni',
+                            'Juli',
+                            'Agustus',
+                            'September',
+                            'Oktober',
+                            'November',
+                            'Desember'
+                        ],
+
+                        firstDay: 1
+                    }
+
+                });
+
+
+                /*
+                 * Saat user klik Terapkan
+                 */
+                input.off('apply.daterangepicker')
+                    .on(
+                        'apply.daterangepicker',
+                        function(ev, picker) {
+
+                            $('#start_date').val(
+                                picker.startDate.format('YYYY-MM-DD')
+                            );
+
+                            $('#end_date').val(
+                                picker.endDate.format('YYYY-MM-DD')
+                            );
+
+                            $(this).val(
+                                picker.startDate.format('DD MMM YYYY') +
+                                ' - ' +
+                                picker.endDate.format('DD MMM YYYY')
+                            );
+
+                            updateModeTampilan();
+                        }
+                    );
+
+
+                /*
+                 * Kalau klik Batal,
+                 * jangan pilih range.
+                 */
+                input.off('cancel.daterangepicker')
+                    .on(
+                        'cancel.daterangepicker',
+                        function() {
+
+                            $(this).val('');
+
+                            $('#start_date').val('');
+                            $('#end_date').val('');
+
+                            updateModeTampilan();
+                        }
+                    );
+            }
 
             $('#poli').select2({
                 placeholder: 'Cari poli...',
@@ -511,6 +667,9 @@
                     data: function(d) {
                         d.bulan = $('#bulan').val();
                         d.tahun = $('#tahun').val();
+
+                        d.start_date = $('#start_date').val();
+                        d.end_date = $('#end_date').val();
 
                         d.poli = $('#poli').val();
                         d.dokter = $('#dokter').val();
@@ -668,34 +827,81 @@
                 }
 
             });
-            // Saat pilih tanggal mulai
-            // $('#start_date').on('change', function() {
 
-            //     let startDate = $(this).val();
+            function formatTanggalIndonesia(value) {
 
-            //     if (startDate) {
-            //         // Set minimal tanggal akhir = tanggal mulai
-            //         $('#end_date').attr('min', startDate);
+                if (!value) return '';
 
-            //         // Jika end_date lebih kecil dari start_date → reset
-            //         if ($('#end_date').val() < startDate) {
-            //             $('#end_date').val('');
-            //         }
-            //     }
-            // });
+                const [tahun, bulan, tanggal] =
+                value.split('-').map(Number);
 
-            // Optional: kalau mau tanggal akhir juga membatasi tanggal mulai
-            // $('#end_date').on('change', function() {
+                return new Date(
+                    tahun,
+                    bulan - 1,
+                    tanggal
+                ).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                });
+            }
 
-            //     let endDate = $(this).val();
 
-            //     if (endDate) {
-            //         $('#start_date').attr('max', endDate);
-            //     }
-            // });
+            function updateModeTampilan() {
+
+                const start = $('#start_date').val();
+                const end = $('#end_date').val();
+
+                if (start && end) {
+
+                    $('#doctorSubtitle').text(
+                        'Rekap pasien dan kapasitas layanan dokter ' +
+                        formatTanggalIndonesia(start) +
+                        ' - ' +
+                        formatTanggalIndonesia(end)
+                    );
+
+                } else {
+
+                    $('#doctorSubtitle').text(
+                        'Rekap pasien dan kapasitas layanan dokter per bulan'
+                    );
+
+                }
+            }
+
+            initTanggalRange();
+            updateModeTampilan();
+
+
+            $('#bulan, #tahun').on('change', function() {
+
+                $('#tanggal_range').val('');
+                $('#start_date').val('');
+                $('#end_date').val('');
+
+                initTanggalRange();
+                updateModeTampilan();
+            });
 
             // FILTER BUTTON
             $('#filter').click(function() {
+
+                const start = $('#start_date').val();
+                const end = $('#end_date').val();
+
+                if (
+                    (start && !end) ||
+                    (!start && end)
+                ) {
+                    alert(
+                        'Rentang tanggal belum lengkap.'
+                    );
+
+                    return;
+                }
+
+                updateModeTampilan();
                 table.ajax.reload();
             });
 
@@ -704,8 +910,15 @@
 
                 const sekarang = new Date();
 
-                $('#bulan').val(sekarang.getMonth() + 1);
-                $('#tahun').val(sekarang.getFullYear());
+                $('#bulan')
+                    .val(sekarang.getMonth() + 1);
+
+                $('#tahun')
+                    .val(sekarang.getFullYear());
+
+                $('#tanggal_range').val('');
+                $('#start_date').val('');
+                $('#end_date').val('');
 
                 $('#poli')
                     .val('')
@@ -713,8 +926,10 @@
 
                 updateDokter();
 
-                table.ajax.reload();
+                initTanggalRange();
+                updateModeTampilan();
 
+                table.ajax.reload();
             });
 
         });
