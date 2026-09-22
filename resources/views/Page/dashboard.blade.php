@@ -493,8 +493,12 @@
 
                     <p>
                         Ringkasan aktivitas pelayanan rumah sakit periode
-                        {{ \Carbon\Carbon::create()->month($bulan)->translatedFormat('F') }}
-                        {{ $tahun }}
+                        @if ($bulan === 'all')
+                            Januari - Desember {{ $tahun }}
+                        @else
+                            {{ \Carbon\Carbon::create()->month((int) $bulan)->translatedFormat('F') }}
+                            {{ $tahun }}
+                        @endif
                     </p>
                 </div>
 
@@ -514,12 +518,17 @@
                         <label>Bulan</label>
 
                         <select name="bulan" class="form-control">
+
+                            <option value="all" {{ $bulan === 'all' ? 'selected' : '' }}>
+                                Semua Bulan
+                            </option>
+
                             @for ($i = 1; $i <= 12; $i++)
                                 <option value="{{ $i }}" {{ $bulan == $i ? 'selected' : '' }}>
-
                                     {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
                                 </option>
                             @endfor
+
                         </select>
                     </div>
 
