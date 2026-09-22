@@ -121,12 +121,19 @@ class DashController extends Controller
     // }
     public function jadwalDokterHariIni(Request $request)
     {
-        $bulan = (int) ($request->bulan ?? now()->month);
+        $bulan = $request->bulan ?? now()->month;
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        // Range bulan untuk seluruh statistik dashboard
-        $awalBulan = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
-        $akhirBulan = $awalBulan->copy()->endOfMonth()->endOfDay();
+        // Tentukan periode berdasarkan filter
+        if ($bulan === 'all') {
+            $awalPeriode = Carbon::createFromDate($tahun, 1, 1)->startOfDay();
+            $akhirPeriode = Carbon::createFromDate($tahun, 12, 31)->endOfDay();
+        } else {
+            $bulan = (int) $bulan;
+
+            $awalPeriode = Carbon::createFromDate($tahun, $bulan, 1)->startOfDay();
+            $akhirPeriode = $awalPeriode->copy()->endOfMonth()->endOfDay();
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -152,8 +159,8 @@ class DashController extends Controller
                 DB::raw('SUM(COALESCE(rs.kapasitaspasien, 0)) as total_kuota')
             )
             ->whereBetween('rs.date', [
-                $awalBulan->toDateString(),
-                $akhirBulan->toDateString()
+                $awalPeriode->toDateString(),
+                $akhirPeriode->toDateString()
             ])
             ->groupBy('rs.section_id');
 
@@ -173,7 +180,7 @@ class DashController extends Controller
                 COALESCE(q.total_kuota, 0) as total_kuota
             ')
 
-            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
@@ -199,7 +206,7 @@ class DashController extends Controller
         $rawatJalan = DB::table('tr_pxregistrations as t')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
-            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
 
             ->where('t.inpatient_status', 0)
             ->where('s.title', '!=', 'IGD 24 JAM')
@@ -214,7 +221,7 @@ class DashController extends Controller
         |--------------------------------------------------------------------------
         */
         $rawatInap = DB::table('tr_pxregistrations as t')
-            ->whereBetween('t.checkout_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.checkout_date', [$awalPeriode, $akhirPeriode])
             ->where('t.inpatient_status', 1)
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
@@ -229,7 +236,7 @@ class DashController extends Controller
         $igd = DB::table('tr_pxregistrations as t')
             ->join('sections as s', 't.section_id', '=', 's.id')
 
-            ->whereBetween('t.reg_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.reg_date', [$awalPeriode, $akhirPeriode])
 
             ->where('t.inpatient_status', 0)
             ->whereIn('s.title', ['IGD 24 JAM', 'PONEK'])
@@ -245,7 +252,7 @@ class DashController extends Controller
         |--------------------------------------------------------------------------
         */
         $pasienStatus = (clone $baseQuery)
-            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
             ->selectRaw('
             SUM(CASE WHEN t.first_regstatus = 1 THEN 1 ELSE 0 END) AS baru,
             SUM(CASE WHEN t.first_regstatus = 0 THEN 1 ELSE 0 END) AS lama
@@ -264,7 +271,7 @@ class DashController extends Controller
             ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
             ->selectRaw('pt.title, COUNT(t.id) as total')
 
-            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
 
             ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
             ->where('t.status', 1)
@@ -285,8 +292,8 @@ class DashController extends Controller
                 DB::raw('SUM(COALESCE(rs.kapasitaspasien, 0)) as total_kuota')
             )
             ->whereBetween('rs.date', [
-                $awalBulan->toDateString(),
-                $akhirBulan->toDateString()
+                $awalPeriode->toDateString(),
+                $akhirPeriode->toDateString()
             ])
             ->groupBy('rs.dokter_id', 'rs.section_id');
 
@@ -308,7 +315,7 @@ class DashController extends Controller
 
             )
 
-            ->whereBetween('t.schedule_date', [$awalBulan, $akhirBulan])
+            ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
