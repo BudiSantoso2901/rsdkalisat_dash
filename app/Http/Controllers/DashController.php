@@ -304,7 +304,6 @@ class DashController extends Controller
             ->leftJoinSub($kuotaPerDokter, 'q', function ($join) {
                 $join->on('q.dokter_id', '=', 't.dokter_id')
                     ->on('q.section_id', '=', 't.section_id');
-
             })
 
             ->select(
@@ -394,7 +393,7 @@ class DashController extends Controller
 
                 return response()->json([
                     'message' =>
-                        'Rentang tanggal harus berada dalam bulan dan tahun terpilih.'
+                    'Rentang tanggal harus berada dalam bulan dan tahun terpilih.'
                 ], 422);
             }
 
@@ -403,7 +402,7 @@ class DashController extends Controller
 
                 return response()->json([
                     'message' =>
-                        'Tanggal mulai tidak boleh setelah tanggal selesai.'
+                    'Tanggal mulai tidak boleh setelah tanggal selesai.'
                 ], 422);
             }
         }
@@ -487,7 +486,6 @@ class DashController extends Controller
                         '=',
                         's.section_id'
                     );
-
             })
 
             ->selectRaw('
@@ -550,201 +548,13 @@ class DashController extends Controller
 
         return view('Page.kunjungan_poli', compact('ruangan', 'dokter'));
     }
-    // public function getKunjunganPoli(Request $request)
-    // {
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | FILTER TANGGAL
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     if ($request->filled('start_date') && $request->filled('end_date')) {
-
-    //         $tanggalMulai   = Carbon::parse($request->start_date)->startOfDay();
-    //         $tanggalSelesai = Carbon::parse($request->end_date)->endOfDay();
-    //     } else {
-
-    //         $tanggalMulai   = Carbon::today()->startOfDay();
-    //         $tanggalSelesai = Carbon::today()->endOfDay();
-    //     }
-
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | QUERY UTAMA
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     $query = DB::table('tr_pxregistrations as t')
-    //         ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
-    //         ->join('patients as p', 't.patient_id', '=', 'p.id')
-    //         ->join('users as u', 't.dokter_id', '=', 'u.id')
-    //         ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
-
-    //         ->select(
-    //             't.schedule_date',
-    //             't.source_reg',
-    //             't.reg_date',
-    //             't.selesai_date',
-    //             't.checkout_date',
-    //             't.numb as no_registrasi',
-    //             't.inpatient_status',
-    //             'u.name as nama_dokter',
-    //             't.status_batal',
-    //             's3.title as ruangan',
-    //             'p.nrm',
-    //             'p.name as nama_pasien',
-    //             'pt.title as penjamin',
-    //             't.bpjs_sep',
-    //             't.bayar_date',
-    //             't.biaya',
-    //             't.rm_diagnosa'
-    //         )
-
-    //         ->whereBetween('t.schedule_date', [
-    //             $tanggalMulai,
-    //             $tanggalSelesai
-    //         ])
-
-    //         ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
-
-    //         ->where('t.inpatient_status', 0)
-    //         ->where('t.status', 1)
-    //         ->where('t.parent_id', 0)
-
-    //         ->where('s3.title', '!=', 'IGD 24 JAM');
-
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | FILTER JENIS PASIEN
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     if ($request->filled('jenis_pasien')) {
-
-    //         $query->where('pt.title', $request->jenis_pasien);
-    //     }
-
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | FILTER POLI / RUANGAN
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     if ($request->filled('ruangan')) {
-
-    //         $query->where('s3.id', $request->ruangan);
-    //     }
-
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | ORDER
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     $query->orderBy('t.schedule_date', 'asc');
-
-
-    //     /*
-    // |--------------------------------------------------------------------------
-    // | DATATABLES
-    // |--------------------------------------------------------------------------
-    // */
-
-    //     return DataTables::of($query)
-
-    //         ->addIndexColumn()
-
-    //         /*
-    //     |--------------------------------------------------------------------------
-    //     | GLOBAL SEARCH
-    //     |--------------------------------------------------------------------------
-    //     */
-
-    //         ->filter(function ($query) use ($request) {
-
-    //             if ($request->has('search')) {
-
-    //                 $search = $request->get('search')['value'];
-
-    //                 if ($search != '') {
-
-    //                     $query->where(function ($q) use ($search) {
-
-    //                         $q->where('p.name', 'like', "%{$search}%")
-    //                             ->orWhere('p.nrm', 'like', "%{$search}%")
-    //                             ->orWhere('u.name', 'like', "%{$search}%")
-    //                             ->orWhere('s3.title', 'like', "%{$search}%")
-    //                             ->orWhere('pt.title', 'like', "%{$search}%")
-    //                             ->orWhere('t.numb', 'like', "%{$search}%");
-    //                     });
-    //                 }
-    //             }
-    //         })
-
-
-    //         /*
-    //     |--------------------------------------------------------------------------
-    //     | FORMAT TANGGAL
-    //     |--------------------------------------------------------------------------
-    //     */
-
-    //         ->editColumn('schedule_date', function ($row) {
-    //             return $row->schedule_date
-    //                 ? Carbon::parse($row->schedule_date)->format('d-m-Y H:i')
-    //                 : '-';
-    //         })
-
-    //         ->editColumn('reg_date', function ($row) {
-    //             return $row->reg_date
-    //                 ? Carbon::parse($row->reg_date)->format('d-m-Y H:i')
-    //                 : '-';
-    //         })
-
-    //         ->editColumn('checkout_date', function ($row) {
-    //             return $row->checkout_date
-    //                 ? Carbon::parse($row->checkout_date)->format('d-m-Y H:i')
-    //                 : '-';
-    //         })
-
-    //         ->editColumn('bayar_date', function ($row) {
-    //             return $row->bayar_date
-    //                 ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
-    //                 : '-';
-    //         })
-
-
-    //         /*
-    //     |--------------------------------------------------------------------------
-    //     | STATUS BATAL
-    //     |--------------------------------------------------------------------------
-    //     */
-
-    //         ->editColumn('status_batal', function ($row) {
-
-    //             if ($row->status_batal == 1) {
-    //                 return '<span class="badge bg-danger">Batal</span>';
-    //             }
-
-    //             return '<span class="badge bg-success">Aktif</span>';
-    //         })
-
-
-    //         ->rawColumns(['status_batal'])
-
-    //         ->make(true);
-    // }
     public function getKunjunganPoli(Request $request)
     {
         /*
-        |--------------------------------------------------------------------------
-        | FILTER TANGGAL
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | FILTER TANGGAL
+    |--------------------------------------------------------------------------
+    */
         $tanggalMulai = $request->filled('start_date')
             ? Carbon::parse($request->start_date)->startOfDay()
             : Carbon::today()->startOfDay();
@@ -753,25 +563,32 @@ class DashController extends Controller
             ? Carbon::parse($request->end_date)->endOfDay()
             : Carbon::today()->endOfDay();
 
-        $jenisKunjungan = $request->jenis_kunjungan ?? 'rajal';
+        /*
+    |--------------------------------------------------------------------------
+    | JENIS KUNJUNGAN
+    |--------------------------------------------------------------------------
+    | all   = Semua
+    | rajal = Rawat Jalan
+    | ranap = Rawat Inap
+    | igd   = IGD & PONEK
+    |--------------------------------------------------------------------------
+    */
+        $jenisKunjungan = $request->input('jenis_kunjungan', 'all');
 
         /*
-        |--------------------------------------------------------------------------
-        | PILIH KOLOM TANGGAL
-        |--------------------------------------------------------------------------
-        */
-        $dateColumn = match ($jenisKunjungan) {
-            'ranap' => 'checkout_date',
-            'igd' => 'reg_date',
-            default => 'schedule_date',
-        };
+    |--------------------------------------------------------------------------
+    | VALIDASI JENIS KUNJUNGAN
+    |--------------------------------------------------------------------------
+    */
+        if (!in_array($jenisKunjungan, ['all', 'rajal', 'ranap', 'igd'])) {
+            $jenisKunjungan = 'all';
+        }
 
         /*
-        |--------------------------------------------------------------------------
-        | FILTER REGISTRASI DULU
-        |--------------------------------------------------------------------------
-        | Data diperkecil sebelum join ke tabel lain.
-        */
+    |--------------------------------------------------------------------------
+    | QUERY REGISTRASI DASAR
+    |--------------------------------------------------------------------------
+    */
         $registrasi = DB::table('tr_pxregistrations')
             ->select([
                 'schedule_date',
@@ -791,27 +608,19 @@ class DashController extends Controller
                 'rm_diagnosa',
                 'source_reg',
             ])
-            ->whereBetween($dateColumn, [$tanggalMulai, $tanggalSelesai])
-            ->whereIn('source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->whereIn('source_reg', [
+                'ADMISI',
+                'MJKN',
+                'NULL'
+            ])
             ->where('status', 1)
             ->where('parent_id', '0');
 
         /*
-        |--------------------------------------------------------------------------
-        | FILTER JENIS KUNJUNGAN
-        |--------------------------------------------------------------------------
-        */
-        if ($jenisKunjungan === 'ranap') {
-            $registrasi->where('inpatient_status', 1);
-        } else {
-            $registrasi->where('inpatient_status', 0);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | QUERY UTAMA
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | QUERY UTAMA
+    |--------------------------------------------------------------------------
+    */
         $query = DB::query()
             ->fromSub($registrasi, 't')
 
@@ -825,21 +634,14 @@ class DashController extends Controller
                 't.reg_date',
                 't.checkout_date',
                 't.selesai_date',
-
                 't.numb as no_registrasi',
                 't.inpatient_status',
-
                 'u.name as nama_dokter',
-
                 't.status_batal',
-
                 's3.title as ruangan',
-
                 'p.nrm',
                 'p.name as nama_pasien',
-
                 'pt.title as penjamin',
-
                 't.bpjs_sep',
                 't.bayar_date',
                 't.biaya',
@@ -847,145 +649,310 @@ class DashController extends Controller
                 't.source_reg',
             ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER RAJAL / IGD
-        |--------------------------------------------------------------------------
-        */
-        if ($jenisKunjungan === 'rajal') {
+        if ($jenisKunjungan === 'ranap') {
 
-            $query->whereNotIn('s3.title', [
-                'IGD 24 JAM',
-                'PONEK'
-            ]);
-
+            // =========================
+            // RAWAT INAP
+            // =========================
+            $query
+                ->where('t.inpatient_status', 1)
+                ->whereBetween('t.checkout_date', [
+                    $tanggalMulai,
+                    $tanggalSelesai
+                ]);
         } elseif ($jenisKunjungan === 'igd') {
 
-            $query->whereIn('s3.title', [
-                'IGD 24 JAM',
-                'PONEK'
-            ]);
+            // =========================
+            // IGD / PONEK
+            // =========================
+            $query
+                ->where('t.inpatient_status', 0)
+                ->whereIn('s3.title', [
+                    'IGD 24 JAM',
+                    'PONEK'
+                ])
+                ->whereBetween('t.reg_date', [
+                    $tanggalMulai,
+                    $tanggalSelesai
+                ]);
+        } elseif ($jenisKunjungan === 'rajal') {
+
+            // =========================
+            // RAWAT JALAN
+            // =========================
+            $query
+                ->where('t.inpatient_status', 0)
+                ->whereNotIn('s3.title', [
+                    'IGD 24 JAM',
+                    'PONEK'
+                ])
+                ->whereBetween('t.schedule_date', [
+                    $tanggalMulai,
+                    $tanggalSelesai
+                ]);
+        } else {
+
+            // =========================
+            // SEMUA JENIS KUNJUNGAN
+            // =========================
+            $query->where(function ($q) use ($tanggalMulai, $tanggalSelesai) {
+
+                /*
+            |--------------------------------------------------------------------------
+            | 1. RAWAT INAP
+            |--------------------------------------------------------------------------
+            */
+                $q->where(function ($ranap) use ($tanggalMulai, $tanggalSelesai) {
+
+                    $ranap
+                        ->where('t.inpatient_status', 1)
+                        ->whereBetween('t.checkout_date', [
+                            $tanggalMulai,
+                            $tanggalSelesai
+                        ]);
+                })
+
+                    /*
+            |--------------------------------------------------------------------------
+            | 2. IGD / PONEK
+            |--------------------------------------------------------------------------
+            */
+                    ->orWhere(function ($igd) use ($tanggalMulai, $tanggalSelesai) {
+
+                        $igd
+                            ->where('t.inpatient_status', 0)
+                            ->whereIn('s3.title', [
+                                'IGD 24 JAM',
+                                'PONEK'
+                            ])
+                            ->whereBetween('t.reg_date', [
+                                $tanggalMulai,
+                                $tanggalSelesai
+                            ]);
+                    })
+
+                    /*
+            |--------------------------------------------------------------------------
+            | 3. RAWAT JALAN
+            |--------------------------------------------------------------------------
+            */
+                    ->orWhere(function ($rajal) use ($tanggalMulai, $tanggalSelesai) {
+
+                        $rajal
+                            ->where('t.inpatient_status', 0)
+                            ->whereNotIn('s3.title', [
+                                'IGD 24 JAM',
+                                'PONEK'
+                            ])
+                            ->whereBetween('t.schedule_date', [
+                                $tanggalMulai,
+                                $tanggalSelesai
+                            ]);
+                    });
+            });
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | FILTER JENIS PASIEN
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | FILTER JENIS PASIEN / PENJAMIN
+    |--------------------------------------------------------------------------
+    */
         if ($request->filled('jenis_pasien')) {
 
             $jenis = is_array($request->jenis_pasien)
                 ? $request->jenis_pasien
                 : explode(',', $request->jenis_pasien);
 
-            $query->whereIn('pt.title', $jenis);
+            // Hilangkan value kosong
+            $jenis = array_filter($jenis);
+
+            if (!empty($jenis)) {
+                $query->whereIn('pt.title', $jenis);
+            }
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | FILTER DOKTER
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | FILTER DOKTER
+    |--------------------------------------------------------------------------
+    */
         if ($request->filled('dokter')) {
 
             $dokter = is_array($request->dokter)
                 ? $request->dokter
                 : explode(',', $request->dokter);
 
-            $query->whereIn('t.dokter_id', $dokter);
+            // Hilangkan value kosong
+            $dokter = array_filter($dokter);
+
+            if (!empty($dokter)) {
+                $query->whereIn('t.dokter_id', $dokter);
+            }
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | FILTER POLI
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | FILTER RUANGAN / POLI
+    |--------------------------------------------------------------------------
+    */
         if ($request->filled('ruangan')) {
-            $query->where('t.section_id', $request->ruangan);
+
+            $query->where(
+                't.section_id',
+                $request->ruangan
+            );
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | ORDER
-        |--------------------------------------------------------------------------
-        */
-        $query->orderBy("t.$dateColumn", 'asc');
+    |--------------------------------------------------------------------------
+    | ORDER DATA
+    |--------------------------------------------------------------------------
+    |
+    | Jika ALL:
+    |
+    | RANAP       -> checkout_date
+    | IGD/PONEK   -> reg_date
+    | RAJAL       -> schedule_date
+    |
+    |--------------------------------------------------------------------------
+    */
+        if ($jenisKunjungan === 'all') {
+
+            $query->orderByRaw("
+            CASE
+                WHEN t.inpatient_status = 1
+                    THEN t.checkout_date
+
+                WHEN t.inpatient_status = 0
+                    AND s3.title IN ('IGD 24 JAM', 'PONEK')
+                    THEN t.reg_date
+
+                ELSE t.schedule_date
+            END ASC
+        ");
+        } elseif ($jenisKunjungan === 'ranap') {
+
+            $query->orderBy('t.checkout_date', 'asc');
+        } elseif ($jenisKunjungan === 'igd') {
+
+            $query->orderBy('t.reg_date', 'asc');
+        } else {
+
+            $query->orderBy('t.schedule_date', 'asc');
+        }
 
         /*
-        |--------------------------------------------------------------------------
-        | DATATABLE
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | DATATABLES
+    |--------------------------------------------------------------------------
+    */
         return DataTables::of($query)
 
             ->addIndexColumn()
 
-            ->filter(function ($query) use ($request) {
-
-                $search = $request->input('search.value');
-
-                if (!$search) {
-                    return;
-                }
-
-                $query->where(function ($q) use ($search) {
-
-                    $q->where('p.name', 'like', "%{$search}%")
-                        ->orWhere('p.nrm', 'like', "%{$search}%")
-                        ->orWhere('u.name', 'like', "%{$search}%")
-                        ->orWhere('s3.title', 'like', "%{$search}%")
-                        ->orWhere('pt.title', 'like', "%{$search}%")
-                        ->orWhere('t.numb', 'like', "%{$search}%");
-                });
-            })
-
+            /*
+        |--------------------------------------------------------------------------
+        | FORMAT SCHEDULE DATE
+        |--------------------------------------------------------------------------
+        */
             ->editColumn('schedule_date', function ($row) {
+
                 return $row->schedule_date
-                    ? Carbon::parse($row->schedule_date)->format('d-m-Y H:i')
+                    ? Carbon::parse($row->schedule_date)
+                    ->format('d-m-Y H:i')
                     : '-';
             })
 
+            /*
+        |--------------------------------------------------------------------------
+        | FORMAT REG DATE
+        |--------------------------------------------------------------------------
+        */
             ->editColumn('reg_date', function ($row) {
+
                 return $row->reg_date
-                    ? Carbon::parse($row->reg_date)->format('d-m-Y H:i')
+                    ? Carbon::parse($row->reg_date)
+                    ->format('d-m-Y H:i')
                     : '-';
             })
 
+            /*
+        |--------------------------------------------------------------------------
+        | FORMAT CHECKOUT DATE
+        |--------------------------------------------------------------------------
+        */
             ->editColumn('checkout_date', function ($row) {
+
                 return $row->checkout_date
-                    ? Carbon::parse($row->checkout_date)->format('d-m-Y H:i')
+                    ? Carbon::parse($row->checkout_date)
+                    ->format('d-m-Y H:i')
                     : '-';
             })
 
+            /*
+        |--------------------------------------------------------------------------
+        | FORMAT BAYAR DATE
+        |--------------------------------------------------------------------------
+        */
             ->editColumn('bayar_date', function ($row) {
+
                 return $row->bayar_date
-                    ? Carbon::parse($row->bayar_date)->format('d-m-Y H:i')
+                    ? Carbon::parse($row->bayar_date)
+                    ->format('d-m-Y H:i')
                     : '-';
             })
 
+            /*
+        |--------------------------------------------------------------------------
+        | STATUS BATAL
+        |--------------------------------------------------------------------------
+        */
             ->editColumn('status_batal', function ($row) {
 
                 return $row->status_batal == 1
-                    ? '<span class="badge bg-danger">Batal</span>'
-                    : '<span class="badge bg-success">Aktif</span>';
+
+                    ? '<span class="badge bg-danger">
+                        Batal
+                   </span>'
+
+                    : '<span class="badge bg-success">
+                        Aktif
+                   </span>';
             })
 
-            ->rawColumns(['status_batal'])
+            ->rawColumns([
+                'status_batal'
+            ])
 
             ->make(true);
     }
     public function exportExcel(Request $request)
     {
+        $start = $request->input('start_date');
+        $end = $request->input('end_date');
+        $jenis = $request->input('jenis_pasien');
+        $ruangan = $request->input('ruangan');
+        $jenis_kunjungan = $request->input('jenis_kunjungan', 'all');
+        $dokter = $request->input('dokter');
 
-        $start = $request->start_date;
-        $end = $request->end_date;
-        $jenis = $request->jenis_pasien;
-        $ruangan = $request->ruangan;
-        $jenis_kunjungan = $request->jenis_kunjungan;
-        $dokter = $request->dokter;
+        if (!in_array($jenis_kunjungan, [
+            'all',
+            'rajal',
+            'ranap',
+            'igd'
+        ])) {
+            $jenis_kunjungan = 'all';
+        }
 
         return Excel::download(
-            new ErmExport($start, $end, $jenis, $ruangan, $jenis_kunjungan, $dokter),
+            new ErmExport(
+                $start,
+                $end,
+                $jenis,
+                $ruangan,
+                $jenis_kunjungan,
+                $dokter
+            ),
             'kunjungan_poli.xlsx'
         );
     }

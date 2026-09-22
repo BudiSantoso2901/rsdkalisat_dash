@@ -58,6 +58,7 @@
                                 <div class="col-md-4">
                                     <label>Jenis Kunjungan</label>
                                     <select id="jenis_kunjungan" class="form-control">
+                                        <option value="all" selected>Semua Jenis Kunjungan</option>
                                         <option value="rajal">Rawat Jalan</option>
                                         <option value="ranap">Rawat Inap</option>
                                         <option value="igd">IGD & PONEK</option>
@@ -166,7 +167,7 @@
 @endsection
 @push('script')
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
 
             /*
             |--------------------------------------------------------------------------
@@ -257,7 +258,7 @@
 
                 ajax: {
                     url: "{{ route('getDataPoli') }}",
-                    data: function(d) {
+                    data: function (d) {
 
                         let range = $('#tanggal_range').val();
 
@@ -269,11 +270,12 @@
                             d.end_date = tanggal[1];
 
                         }
-                        d.jenis_kunjungan = $('#jenis_kunjungan').val();
+                        d.jenis_kunjungan =
+                            $('#jenis_kunjungan').val() || 'all';
                         d.jenis_pasien = $('#jenis_pasien').val();
                         d.ruangan = $('#ruangan').val();
                         d.dokter = $('#dokter').val();
-
+                        console.log('JENIS KUNJUNGAN:', d.jenis_kunjungan);
                     }
                 },
 
@@ -330,7 +332,7 @@
                     },
                     {
                         data: 'biaya',
-                        render: function(data, type, row) {
+                        render: function (data, type, row) {
                             if (data == null) return 'Rp 0';
 
                             return 'Rp ' + parseInt(data).toLocaleString('id-ID');
@@ -365,7 +367,7 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#filter').click(function() {
+            $('#filter').click(function () {
 
                 table.ajax.reload();
 
@@ -378,7 +380,7 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#reset').click(function() {
+            $('#reset').click(function () {
 
                 $('#jenis_kunjungan').val('');
                 $('#jenis_pasien').val([]);
@@ -397,36 +399,61 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#export_excel').click(function() {
-                let dokter = $('#dokter').val();
-                let range = $('#tanggal_range').val();
-                let jenis_pasien = $('#jenis_pasien').val();
-                let ruangan = $('#ruangan').val();
-                let jenis_kunjungan = $('#jenis_kunjungan').val();
+            $('#export_excel').click(function () {
+
+                let dokter = $('#dokter').val() || '';
+                let range = $('#tanggal_range').val() || '';
+                let jenis_pasien = $('#jenis_pasien').val() || [];
+                let ruangan = $('#ruangan').val() || '';
+                let jenis_kunjungan = $('#jenis_kunjungan').val() || 'all';
+
                 let start = '';
                 let end = '';
 
                 if (range) {
-
                     let tanggal = range.split(' - ');
-
-                    start = tanggal[0];
-                    end = tanggal[1];
+                    start = tanggal[0] || '';
+                    end = tanggal[1] || '';
                 }
 
-                let url = "{{ route('export.excel') }}";
+                let params = new URLSearchParams();
 
-                url += "?start_date=" + start +
-                    "&end_date=" + end +
-                    "&jenis_pasien=" + jenis_pasien +
-                    "&ruangan=" + ruangan +
-                    "&jenis_kunjungan=" + jenis_kunjungan +
-                    "&dokter=" + dokter;
+                params.append('start_date', start);
+                params.append('end_date', end);
+
+                if (Array.isArray(jenis_pasien)) {
+                    jenis_pasien.forEach(function (value) {
+                        if (value) {
+                            params.append('jenis_pasien[]', value);
+                        }
+                    });
+                } else if (jenis_pasien) {
+                    params.append('jenis_pasien', jenis_pasien);
+                }
+
+                if (ruangan) {
+                    params.append('ruangan', ruangan);
+                }
+
+                params.append('jenis_kunjungan', jenis_kunjungan);
+
+                if (Array.isArray(dokter)) {
+                    dokter.forEach(function (value) {
+                        if (value) {
+                            params.append('dokter[]', value);
+                        }
+                    });
+                } else if (dokter) {
+                    params.append('dokter', dokter);
+                }
+
+                let url = "{{ route('export.excel') }}?" + params.toString();
+
+                console.log('EXPORT URL:', url);
+                console.log('JENIS KUNJUNGAN:', jenis_kunjungan);
 
                 window.open(url, '_blank');
-
             });
-
 
         });
     </script>

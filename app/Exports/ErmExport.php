@@ -34,39 +34,40 @@ class ErmExport implements FromCollection, WithHeadings
 
     public function collection()
     {
-        $start = Carbon::parse($this->start)->startOfDay();
-        $end = Carbon::parse($this->end)->endOfDay();
+        $start = $this->start
+            ? Carbon::parse($this->start)->startOfDay()
+            : Carbon::today()->startOfDay();
 
-        $jenis = $this->jenis_kunjungan ?: 'rajal';
+        $end = $this->end
+            ? Carbon::parse($this->end)->endOfDay()
+            : Carbon::today()->endOfDay();
+
+        $jenis = $this->jenis_kunjungan ?: 'all';
+
+        if (!in_array($jenis, ['all', 'rajal', 'ranap', 'igd'])) {
+            $jenis = 'all';
+        }
 
         $query = DB::table('tr_pxregistrations as t')
             ->join('patient_types as pt', 't.type_id', '=', 'pt.id')
             ->join('patients as p', 't.patient_id', '=', 'p.id')
             ->join('users as u', 't.dokter_id', '=', 'u.id')
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
-
             ->select([
                 't.checkout_date',
                 't.schedule_date',
                 't.reg_date',
                 't.selesai_date',
-
                 't.inpatient_status',
                 't.parent_id',
-
                 't.bpjs_sep',
                 't.numb as no_registrasi',
-
                 'p.nrm',
                 'p.name as nama_pasien',
-
                 'u.name as nama_dokter',
-
                 's3.title as ruangan',
                 'pt.title as penjamin',
-
                 't.biaya',
-
                 DB::raw("
                     CASE
                         WHEN t.bpjs_sep IS NOT NULL
@@ -75,7 +76,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_sep
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.rm_diagnosa IS NOT NULL
@@ -84,7 +84,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_diagnosa
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.rm_closing_date IS NOT NULL
@@ -92,7 +91,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_resume_medis
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.bayar_date IS NOT NULL
@@ -100,7 +98,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_billing
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.farmasi_panggil_time IS NOT NULL
@@ -108,7 +105,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_obat
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.radiographer_id IS NOT NULL
@@ -116,7 +112,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_radiologi
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.analyst_id IS NOT NULL
@@ -124,7 +119,6 @@ class ErmExport implements FromCollection, WithHeadings
                         ELSE '❌'
                     END AS cek_laboratorium
                 "),
-
                 DB::raw("
                     CASE
                         WHEN t.bpjs_sep IS NOT NULL
@@ -141,64 +135,99 @@ class ErmExport implements FromCollection, WithHeadings
                     END AS status_erm
                 ")
             ])
-
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
-            ->whereIn(
-                't.source_reg',
-                ['ADMISI', 'MJKN', 'NULL']
-            );
-
-        /*
-        |--------------------------------------------------------------------------
-        | JENIS KUNJUNGAN
-        |--------------------------------------------------------------------------
-        */
+            ->whereIn('t.source_reg', [
+                'ADMISI',
+                'MJKN',
+                'NULL'
+            ]);
 
         if ($jenis === 'ranap') {
 
             $query
-                ->whereBetween(
-                    't.checkout_date',
-                    [$start, $end]
-                )
                 ->where('t.inpatient_status', 1)
+                ->whereBetween('t.checkout_date', [
+                    $start,
+                    $end
+                ])
                 ->orderBy('t.checkout_date', 'ASC');
-
         } elseif ($jenis === 'igd') {
 
             $query
-                ->whereBetween(
-                    't.reg_date',
-                    [$start, $end]
-                )
                 ->where('t.inpatient_status', 0)
-                ->whereIn(
-                    's3.title',
-                    ['IGD 24 JAM', 'PONEK']
-                )
+                ->whereIn('s3.title', [
+                    'IGD 24 JAM',
+                    'PONEK'
+                ])
+                ->whereBetween('t.reg_date', [
+                    $start,
+                    $end
+                ])
                 ->orderBy('t.reg_date', 'ASC');
-
-        } else {
+        } elseif ($jenis === 'rajal') {
 
             $query
-                ->whereBetween(
-                    't.schedule_date',
-                    [$start, $end]
-                )
                 ->where('t.inpatient_status', 0)
-                ->whereNotIn(
-                    's3.title',
-                    ['IGD 24 JAM', 'PONEK']
-                )
+                ->whereNotIn('s3.title', [
+                    'IGD 24 JAM',
+                    'PONEK'
+                ])
+                ->whereBetween('t.schedule_date', [
+                    $start,
+                    $end
+                ])
                 ->orderBy('t.schedule_date', 'ASC');
-        }
+        } else {
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER JENIS PASIEN
-        |--------------------------------------------------------------------------
-        */
+            $query->where(function ($q) use ($start, $end) {
+
+                $q->where(function ($ranap) use ($start, $end) {
+
+                    $ranap
+                        ->where('t.inpatient_status', 1)
+                        ->whereBetween('t.checkout_date', [
+                            $start,
+                            $end
+                        ]);
+                })->orWhere(function ($igd) use ($start, $end) {
+
+                    $igd
+                        ->where('t.inpatient_status', 0)
+                        ->whereIn('s3.title', [
+                            'IGD 24 JAM',
+                            'PONEK'
+                        ])
+                        ->whereBetween('t.reg_date', [
+                            $start,
+                            $end
+                        ]);
+                })->orWhere(function ($rajal) use ($start, $end) {
+
+                    $rajal
+                        ->where('t.inpatient_status', 0)
+                        ->whereNotIn('s3.title', [
+                            'IGD 24 JAM',
+                            'PONEK'
+                        ])
+                        ->whereBetween('t.schedule_date', [
+                            $start,
+                            $end
+                        ]);
+                });
+            });
+
+            $query->orderByRaw("
+                CASE
+                    WHEN t.inpatient_status = 1
+                        THEN t.checkout_date
+                    WHEN t.inpatient_status = 0
+                        AND s3.title IN ('IGD 24 JAM', 'PONEK')
+                        THEN t.reg_date
+                    ELSE t.schedule_date
+                END ASC
+            ");
+        }
 
         if (!empty($this->jenis_pasien)) {
 
@@ -206,14 +235,12 @@ class ErmExport implements FromCollection, WithHeadings
                 ? $this->jenis_pasien
                 : explode(',', $this->jenis_pasien);
 
-            $query->whereIn('pt.title', $jenisPasien);
-        }
+            $jenisPasien = array_filter($jenisPasien);
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER RUANGAN
-        |--------------------------------------------------------------------------
-        */
+            if (!empty($jenisPasien)) {
+                $query->whereIn('pt.title', $jenisPasien);
+            }
+        }
 
         if (!empty($this->ruangan)) {
             $query->where(
@@ -222,26 +249,18 @@ class ErmExport implements FromCollection, WithHeadings
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FILTER DOKTER
-        |--------------------------------------------------------------------------
-        */
-
         if (!empty($this->dokter)) {
 
             $dokter = is_array($this->dokter)
                 ? $this->dokter
                 : explode(',', $this->dokter);
 
-            $query->whereIn('t.dokter_id', $dokter);
-        }
+            $dokter = array_filter($dokter);
 
-        /*
-        |--------------------------------------------------------------------------
-        | SUSUN KOLOM EXCEL
-        |--------------------------------------------------------------------------
-        */
+            if (!empty($dokter)) {
+                $query->whereIn('t.dokter_id', $dokter);
+            }
+        }
 
         return $query
             ->get()
@@ -253,16 +272,8 @@ class ErmExport implements FromCollection, WithHeadings
                         : '-';
                 };
 
-                /*
-                |--------------------------------------------------------------------------
-                | RAWAT JALAN
-                |--------------------------------------------------------------------------
-                */
-
                 if ($jenis === 'rajal') {
-
                     return [
-                        // Kolom utama
                         $tanggal($row->schedule_date),
                         $row->nrm ?? '-',
                         $row->nama_pasien ?? '-',
@@ -273,8 +284,6 @@ class ErmExport implements FromCollection, WithHeadings
                         $row->no_registrasi ?? '-',
                         $tanggal($row->checkout_date),
                         $row->bpjs_sep ?? '-',
-
-                        // Kolom lainnya tetap ditampilkan
                         $tanggal($row->reg_date),
                         $row->inpatient_status ?? '-',
                         $row->parent_id ?? '-',
@@ -290,14 +299,7 @@ class ErmExport implements FromCollection, WithHeadings
                     ];
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | RAWAT INAP / IGD
-                |--------------------------------------------------------------------------
-                */
-
                 return [
-                    // Kolom utama
                     $tanggal($row->reg_date),
                     $row->bpjs_sep ?? '-',
                     $tanggal($row->selesai_date),
@@ -308,8 +310,6 @@ class ErmExport implements FromCollection, WithHeadings
                     $row->ruangan ?? '-',
                     $row->penjamin ?? '-',
                     $tanggal($row->checkout_date),
-
-                    // Kolom lainnya tetap ditampilkan
                     $tanggal($row->schedule_date),
                     $row->inpatient_status ?? '-',
                     $row->parent_id ?? '-',
@@ -328,10 +328,13 @@ class ErmExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        $jenis = $this->jenis_kunjungan ?: 'rajal';
+        $jenis = $this->jenis_kunjungan ?: 'all';
+
+        if (!in_array($jenis, ['all', 'rajal', 'ranap', 'igd'])) {
+            $jenis = 'all';
+        }
 
         if ($jenis === 'rajal') {
-
             return [
                 'Schedule Date',
                 'NRM',
@@ -343,8 +346,61 @@ class ErmExport implements FromCollection, WithHeadings
                 'No Registrasi',
                 'Checkout Date',
                 'No SEP',
-
                 'Reg Date',
+                'Inpatient ID',
+                'Parent ID',
+                'Biaya',
+                'SEP',
+                'Diagnosa',
+                'Resume Medis',
+                'Billing',
+                'Obat',
+                'Radiologi',
+                'Laboratorium',
+                'Status ERM'
+            ];
+        }
+
+        if ($jenis === 'ranap') {
+            return [
+                'Reg Date',
+                'No SEP',
+                'Selesai Date',
+                'No Registrasi',
+                'NRM',
+                'Nama Pasien',
+                'Nama Dokter',
+                'Ruangan',
+                'Penjamin',
+                'Checkout Date',
+                'Schedule Date',
+                'Inpatient ID',
+                'Parent ID',
+                'Biaya',
+                'SEP',
+                'Diagnosa',
+                'Resume Medis',
+                'Billing',
+                'Obat',
+                'Radiologi',
+                'Laboratorium',
+                'Status ERM'
+            ];
+        }
+
+        if ($jenis === 'igd') {
+            return [
+                'Reg Date',
+                'No SEP',
+                'Selesai Date',
+                'No Registrasi',
+                'NRM',
+                'Nama Pasien',
+                'Nama Dokter',
+                'Ruangan',
+                'Penjamin',
+                'Checkout Date',
+                'Schedule Date',
                 'Inpatient ID',
                 'Parent ID',
                 'Biaya',
@@ -370,7 +426,6 @@ class ErmExport implements FromCollection, WithHeadings
             'Ruangan',
             'Penjamin',
             'Checkout Date',
-
             'Schedule Date',
             'Inpatient ID',
             'Parent ID',
