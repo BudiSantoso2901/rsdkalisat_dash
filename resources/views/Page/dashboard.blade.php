@@ -191,6 +191,16 @@
             height: 430px;
         }
 
+        .doctor-chart-scroll {
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .doctor-chart {
+            height: 450px;
+            min-height: 450px;
+        }
+
         .patient-panel {
             height: 100%;
             display: flex;
@@ -745,21 +755,23 @@
                                 Statistik Kunjungan Dokter
                             </h5>
 
-                            <div class="subtitle">
+                            <div class="subtitle" id="doctorSubtitle">
                                 10 dokter dengan kunjungan terbanyak
                             </div>
                         </div>
 
-                        <span class="section-badge">
-                            Top 10
-                        </span>
+                        <button type="button" id="toggleDokter" class="section-badge border-0" style="cursor:pointer;">
+                            Lihat Semua
+                        </button>
 
                     </div>
 
 
                     @if ($pxdokter->count())
-                        <div class="doctor-chart">
-                            <canvas id="chartDokter"></canvas>
+                        <div id="doctorChartScroll" class="doctor-chart-scroll">
+                            <div id="doctorChartWrap" class="doctor-chart">
+                                <canvas id="chartDokter"></canvas>
+                            </div>
                         </div>
                     @else
                         <div class="text-center text-muted py-5">
@@ -785,11 +797,11 @@
 
         const poliKuota = @json($kunjunganPerPoli->pluck('total_kuota')->values());
 
-        const dokterLabels = @json($pxdokter->take(10)->pluck('nama_dokter')->values());
+        const dokterLabelsAll = @json($pxdokter->pluck('nama_dokter')->values());
 
-        const dokterData = @json($pxdokter->take(10)->pluck('total_pasien')->values());
+        const dokterDataAll = @json($pxdokter->pluck('total_pasien')->values());
 
-        const dokterKuota = @json($pxdokter->take(10)->pluck('total_kuota')->values());
+        const dokterKuotaAll = @json($pxdokter->pluck('total_kuota')->values());
 
         const pasienBaru = {{ $pasienBaru ?? 0 }};
         const pasienLama = {{ $pasienLama ?? 0 }};
@@ -947,23 +959,51 @@
         const dokterEl =
             document.getElementById('chartDokter');
 
+        const toggleDokter =
+            document.getElementById('toggleDokter');
+
+        const doctorSubtitle =
+            document.getElementById('doctorSubtitle');
+
+        const doctorChartWrap =
+            document.getElementById('doctorChartWrap');
+
+        const doctorChartScroll =
+            document.getElementById('doctorChartScroll');
+
+
+        let tampilSemuaDokter = false;
+        let chartDokter = null;
+
+        let dokterDataAktif = [];
+        let dokterKuotaAktif = [];
+
+
         const doctorQuotaLabelPlugin = {
             id: 'doctorQuotaLabelPlugin',
 
             afterDatasetsDraw(chart) {
+
                 const {
                     ctx
                 } = chart;
                 const meta = chart.getDatasetMeta(0);
 
                 ctx.save();
-                ctx.font = '600 11px Inter, Segoe UI, Arial';
+
+                ctx.font =
+                    '600 11px Inter, Segoe UI, Arial';
+
                 ctx.fillStyle = '#536273';
                 ctx.textBaseline = 'middle';
 
                 meta.data.forEach((bar, index) => {
-                    const pasien = Number(dokterData[index] ?? 0);
-                    const kuota = Number(dokterKuota[index] ?? 0);
+
+                    const pasien =
+                        Number(dokterDataAktif[index] ?? 0);
+
+                    const kuota =
+                        Number(dokterKuotaAktif[index] ?? 0);
 
                     ctx.fillText(
                         `${number(pasien)} / ${number(kuota)}`,
@@ -976,16 +1016,58 @@
             }
         };
 
-        if (dokterEl) {
-            new Chart(dokterEl, {
+
+        function renderChartDokter() {
+
+            const batas =
+                tampilSemuaDokter ?
+                dokterLabelsAll.length :
+                10;
+
+            const dokterLabels =
+                dokterLabelsAll.slice(0, batas);
+
+            dokterDataAktif =
+                dokterDataAll.slice(0, batas);
+
+            dokterKuotaAktif =
+                dokterKuotaAll.slice(0, batas);
+
+
+            const tinggi =
+                Math.max(
+                    450,
+                    dokterLabels.length * 44 + 60
+                );
+
+            doctorChartWrap.style.height =
+                `${tinggi}px`;
+
+            doctorChartScroll.style.maxHeight =
+                tampilSemuaDokter ?
+                '650px' :
+                'none';
+
+
+            if (chartDokter) {
+                chartDokter.destroy();
+            }
+
+
+            chartDokter = new Chart(dokterEl, {
+
                 type: 'bar',
 
-                plugins: [doctorQuotaLabelPlugin],
+                plugins: [
+                    doctorQuotaLabelPlugin
+                ],
 
                 data: {
+
                     labels: dokterLabels,
+
                     datasets: [{
-                        data: dokterData,
+                        data: dokterDataAktif,
                         backgroundColor: '#24C875',
                         hoverBackgroundColor: '#19A963',
                         borderRadius: 6,
@@ -996,6 +1078,7 @@
                 },
 
                 options: {
+
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1013,6 +1096,7 @@
                     },
 
                     plugins: {
+
                         legend: {
                             display: false
                         },
@@ -1026,14 +1110,25 @@
                             backgroundColor: '#263442',
 
                             callbacks: {
-                                title: items => items[0].label,
+
+                                title: items =>
+                                    items[0].label,
 
                                 label: ctx => {
-                                    const kuota = Number(dokterKuota[ctx.dataIndex] ?? 0);
+
+                                    const index =
+                                        ctx.dataIndex;
 
                                     return [
-                                        'Kunjungan: ' + number(ctx.raw),
-                                        'Kuota: ' + number(kuota)
+                                        'Kunjungan: ' +
+                                        number(
+                                            dokterDataAktif[index]
+                                        ),
+
+                                        'Kuota: ' +
+                                        number(
+                                            dokterKuotaAktif[index]
+                                        )
                                     ];
                                 }
                             }
@@ -1041,27 +1136,74 @@
                     },
 
                     scales: {
+
                         x: {
                             beginAtZero: true,
+
                             border: {
                                 display: false
                             },
+
                             grid: {
                                 color: '#EDF1F5'
+                            },
+
+                            ticks: {
+                                callback: value =>
+                                    number(value)
                             }
                         },
+
                         y: {
                             border: {
                                 display: false
                             },
+
                             grid: {
                                 display: false
+                            },
+
+                            ticks: {
+                                autoSkip: false,
+                                color: '#536273'
                             }
                         }
                     }
                 }
             });
         }
+
+
+        /* Default Top 10 */
+        renderChartDokter();
+
+
+        /* Toggle Top 10 / Semua */
+        toggleDokter.addEventListener(
+            'click',
+            function() {
+
+                tampilSemuaDokter = !tampilSemuaDokter;
+
+                if (tampilSemuaDokter) {
+
+                    this.textContent = 'Top 10';
+
+                    doctorSubtitle.textContent =
+                        `Semua dokter (${dokterLabelsAll.length})`;
+
+                } else {
+
+                    this.textContent =
+                        'Lihat Semua';
+
+                    doctorSubtitle.textContent =
+                        '10 dokter dengan kunjungan terbanyak';
+                }
+
+                renderChartDokter();
+            }
+        );
 
 
         /* PASIEN BARU & LAMA */
