@@ -6,8 +6,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class ErmExport implements FromCollection, WithHeadings
+class ErmExport implements FromCollection, WithHeadings, WithTitle
 {
     protected $start;
     protected $end;
@@ -15,6 +16,10 @@ class ErmExport implements FromCollection, WithHeadings
     protected $ruangan;
     protected $jenis_kunjungan;
     protected $dokter;
+    public function title(): string
+    {
+        return 'KUNJUNGAN';
+    }
 
     public function __construct(
         $start,

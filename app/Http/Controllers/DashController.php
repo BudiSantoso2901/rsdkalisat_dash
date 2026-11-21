@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Yajra\DataTables\Facades\DataTables;
+use App\Exports\KunjunganWithSoapExport;
 
 
 class DashController extends Controller
@@ -591,6 +592,7 @@ class DashController extends Controller
     */
         $registrasi = DB::table('tr_pxregistrations')
             ->select([
+                'id',
                 'schedule_date',
                 'reg_date',
                 'checkout_date',
@@ -630,6 +632,7 @@ class DashController extends Controller
             ->leftJoin('sections as s3', 't.section_id', '=', 's3.id')
 
             ->select([
+                't.id as registration_id',
                 't.schedule_date',
                 't.reg_date',
                 't.checkout_date',
@@ -926,8 +929,409 @@ class DashController extends Controller
 
             ->make(true);
     }
+
+
+    public function getRiwayatSoap(Request $request, string $registrationId)
+    {
+        // Validasi registrasi utama dan ambil identitas pasien
+        $root = DB::table('tr_pxregistrations as t')
+            ->leftJoin('patients as p', 'p.id', '=', 't.patient_id')
+            ->where('t.id', $registrationId)
+            ->where('t.parent_id', '0')
+            ->where('t.status', 1)
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->select([
+                't.id',
+                't.numb as no_registrasi',
+                't.reg_date',
+                'p.nrm',
+                'p.name as nama_pasien',
+            ])
+            ->first();
+
+        if (!$root) {
+            return response()->json([
+                'message' => 'Registrasi pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        // PAGINATION: 5 CATATAN PER HALAMAN
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 5;
+
+        // Registrasi utama dan seluruh registrasi transfer
+        $cte = "
+        WITH RECURSIVE registration_chain
+            (reg_id, root_id, depth) AS (
+
+            SELECT
+                id,
+                id,
+                0
+            FROM tr_pxregistrations
+            WHERE id = ?
+              AND parent_id = '0'
+
+            UNION ALL
+
+            SELECT
+                child.id,
+                parent.root_id,
+                parent.depth + 1
+            FROM tr_pxregistrations AS child
+            INNER JOIN registration_chain AS parent
+                ON child.parent_id = parent.reg_id
+
+        ) CYCLE reg_id RESTRICT
+    ";
+
+        // HITUNG TOTAL SELURUH CATATAN SOAP
+        $countSql = $cte . "
+        SELECT COUNT(*) AS aggregate
+        FROM registration_chain AS rc
+        INNER JOIN rm_cppt AS c
+            ON c.reg_id = rc.reg_id
+    ";
+
+        $total = (int) DB::selectOne(
+            $countSql,
+            [$registrationId]
+        )->aggregate;
+
+        // Hitung jumlah halaman
+        $lastPage = max(1, (int) ceil($total / $perPage));
+
+        // Pastikan halaman tidak melebihi halaman terakhir
+        $page = min($page, $lastPage);
+
+        $offset = ($page - 1) * $perPage;
+
+        // AMBIL CATATAN SOAP SESUAI HALAMAN
+        $dataSql = $cte . "
+        SELECT
+            c.idx,
+            c.reg_id,
+
+            c.date AS tanggal,
+            c.time AS jam,
+
+            c.profesi,
+            c.ppa,
+
+            c.subyective AS subjective,
+            c.obyective AS objective,
+            c.asessment AS assessment,
+
+            c.planning,
+            c.instruction,
+            c.instruction_obat,
+
+            c.dpjp_verified_status,
+
+            r.numb AS no_registrasi,
+            r.section_id,
+
+            s.title AS ruangan,
+
+            rc.depth
+
+        FROM registration_chain AS rc
+
+        INNER JOIN rm_cppt AS c
+            ON c.reg_id = rc.reg_id
+
+        INNER JOIN tr_pxregistrations AS r
+            ON r.id = rc.reg_id
+
+        LEFT JOIN sections AS s
+            ON s.id = r.section_id
+
+        ORDER BY
+            c.date ASC,
+            c.time ASC,
+            c.idx ASC
+
+        LIMIT ? OFFSET ?
+    ";
+
+        $data = DB::select(
+            $dataSql,
+            [$registrationId, $perPage, $offset]
+        );
+
+        return response()->json([
+
+            'pasien' => [
+                'nama_pasien' => $root->nama_pasien,
+                'nrm' => $root->nrm,
+                'no_registrasi' => $root->no_registrasi,
+                'reg_date' => $root->reg_date,
+            ],
+
+            'data' => $data,
+
+            // INFORMASI PAGINATION UNTUK JAVASCRIPT
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+                'from' => $total > 0 ? $offset + 1 : null,
+                'to' => min($offset + $perPage, $total),
+            ],
+
+        ]);
+    }
+
+
+    public function getRiwayatErm(Request $request, string $registrationId)
+    {
+        // Validasi registrasi utama
+        $root = DB::table('tr_pxregistrations as t')
+            ->leftJoin('patients as p', 'p.id', '=', 't.patient_id')
+            ->where('t.id', $registrationId)
+            ->where('t.parent_id', '0')
+            ->where('t.status', 1)
+            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->select([
+                't.id',
+                't.numb as no_registrasi',
+                'p.nrm',
+                'p.name as nama_pasien',
+            ])
+            ->first();
+
+        if (!$root) {
+            return response()->json([
+                'message' => 'Registrasi pasien tidak ditemukan.'
+            ], 404);
+        }
+
+        // Registrasi utama dan seluruh transfer
+        $cte = "
+        WITH RECURSIVE registration_chain
+            (reg_id, root_id, depth) AS (
+
+            SELECT
+                id,
+                id,
+                0
+            FROM tr_pxregistrations
+            WHERE id = ?
+              AND parent_id = '0'
+
+            UNION ALL
+
+            SELECT
+                child.id,
+                parent.root_id,
+                parent.depth + 1
+            FROM tr_pxregistrations AS child
+            INNER JOIN registration_chain AS parent
+                ON child.parent_id = parent.reg_id
+
+        ) CYCLE reg_id RESTRICT
+    ";
+
+        // Ambil seluruh dokumen RM Elektronik
+        $dataSql = $cte . "
+        SELECT
+            e.id AS document_id,
+            e.idx,
+            e.reg_id,
+
+            e.numb,
+            e.nomor_surat,
+
+            e.title,
+            e.sub_title,
+            e.description,
+
+            e.type,
+            e.kategori,
+            e.role,
+            e.form,
+            e.size,
+
+            e.noSep,
+            e.noreg_permintaan,
+
+            e.status,
+            e.status_publish,
+            e.date_publish,
+
+            e.note_hapus,
+
+            e.created_at,
+            e.updated_at,
+
+            r.numb AS no_registrasi,
+            r.section_id,
+
+            s.title AS ruangan,
+            u.name AS nama_dokter,
+
+            rc.depth
+
+        FROM registration_chain AS rc
+
+        INNER JOIN rm_electronics AS e
+            ON e.reg_id = rc.reg_id
+
+        INNER JOIN tr_pxregistrations AS r
+            ON r.id = rc.reg_id
+
+        LEFT JOIN sections AS s
+            ON s.id = e.section_id
+
+        LEFT JOIN users AS u
+            ON u.id = e.dokter_id
+
+        ORDER BY
+            COALESCE(e.date_publish, e.created_at) DESC,
+            e.idx DESC
+    ";
+
+        // Semua dokumen diambil tanpa LIMIT dan OFFSET
+        $data = DB::select(
+            $dataSql,
+            [$registrationId]
+        );
+
+        return response()->json([
+            'pasien' => [
+                'nama_pasien' => $root->nama_pasien,
+                'nrm' => $root->nrm,
+                'no_registrasi' => $root->no_registrasi,
+            ],
+
+            'data' => $data,
+
+        ]);
+    }
+
+    public function getDetailDokumenErm(
+        Request $request,
+        string $registrationId,
+        string $documentId
+    ) {
+        // Pastikan registrasi utama valid
+        $rootExists = DB::table('tr_pxregistrations')
+            ->where('id', $registrationId)
+            ->where('parent_id', '0')
+            ->where('status', 1)
+            ->whereIn('source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->exists();
+
+        if (!$rootExists) {
+            return response()->json([
+                'message' => 'Registrasi utama tidak ditemukan.'
+            ], 404);
+        }
+
+        $cte = "
+        WITH RECURSIVE registration_chain
+            (reg_id, root_id, depth) AS (
+
+            SELECT
+                id,
+                id,
+                0
+            FROM tr_pxregistrations
+            WHERE id = ?
+              AND parent_id = '0'
+
+            UNION ALL
+
+            SELECT
+                child.id,
+                parent.root_id,
+                parent.depth + 1
+            FROM tr_pxregistrations AS child
+            INNER JOIN registration_chain AS parent
+                ON child.parent_id = parent.reg_id
+
+        ) CYCLE reg_id RESTRICT
+    ";
+
+        $sql = $cte . "
+        SELECT
+            e.id,
+            e.idx,
+            e.reg_id,
+
+            e.title,
+            e.sub_title,
+            e.description,
+
+            e.type,
+            e.kategori,
+            e.role,
+            e.form,
+
+            e.erm_json,
+            e.json_hasil_lab,
+
+            e.path,
+            e.pdf,
+
+            e.created_at,
+            e.date_publish,
+
+            e.nomor_surat,
+
+            r.numb AS no_registrasi,
+            s.title AS ruangan,
+            u.name AS nama_dokter,
+
+            rc.depth
+
+        FROM registration_chain AS rc
+
+        INNER JOIN rm_electronics AS e
+            ON e.reg_id = rc.reg_id
+
+        INNER JOIN tr_pxregistrations AS r
+            ON r.id = rc.reg_id
+
+        LEFT JOIN sections AS s
+            ON s.id = e.section_id
+
+        LEFT JOIN users AS u
+            ON u.id = e.dokter_id
+
+        WHERE e.id = ?
+
+        LIMIT 1
+    ";
+
+        $document = DB::selectOne(
+            $sql,
+            [$registrationId, $documentId]
+        );
+
+        if (!$document) {
+            return response()->json([
+                'message' => 'Dokumen tidak ditemukan dalam rangkaian kunjungan ini.'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => $document
+        ]);
+    }
+
     public function exportExcel(Request $request)
     {
+        $start = $request->start_date;
+        $end = $request->end_date;
+        $jenis = $request->jenis_pasien;
+        $ruangan = $request->ruangan;
+        $jenis_kunjungan = $request->jenis_kunjungan;
+        $dokter = $request->dokter;
+
+        return Excel::download(
+            new KunjunganWithSoapExport(
         $start = $request->input('start_date');
         $end = $request->input('end_date');
         $jenis = $request->input('jenis_pasien');
