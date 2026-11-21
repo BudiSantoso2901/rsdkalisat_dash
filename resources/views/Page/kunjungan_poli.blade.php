@@ -2,37 +2,155 @@
 
 @section('content')
     <style>
-        .select2-container .select2-selection--single {
+        /* =========================================
+           FILTER GRID - 3 KOLOM
+        ========================================= */
+
+        .kunjungan-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            column-gap: 22px;
+            row-gap: 12px;
+            align-items: end;
+            width: 100%;
+        }
+
+        .kunjungan-filter-grid .filter-item {
+            min-width: 0;
+            width: 100%;
+        }
+
+        .kunjungan-filter-grid .filter-item label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        .kunjungan-filter-grid .filter-item>.form-control {
+            width: 100%;
             height: 38px;
+            box-sizing: border-box;
+            font-size: 14px;
         }
 
-        .select2-selection__rendered {
-            line-height: 38px !important;
+        /* =========================================
+           SELECT2 SINGLE - RUANGAN DAN DOKTER
+        ========================================= */
+
+        .kunjungan-filter-grid .select2-container {
+            width: 100% !important;
         }
 
-        .select2-selection__arrow {
+        .select2-container--default .select2-selection--single {
             height: 38px !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 4px !important;
         }
 
-        /* Select2 multi-select untuk filter Jenis Pasien */
-        .select2-container--default .select2-selection--multiple {
-            min-height: 38px;
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 12px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
+
+        /* =========================================
+           SELECT2 MULTIPLE - JENIS PASIEN
+        ========================================= */
+
+        #jenis_pasien+.select2-container {
+            display: block !important;
+            width: 100% !important;
+        }
+
+        #jenis_pasien+.select2-container .select2-selection--multiple {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 2px 7px !important;
+            background: #fff !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 4px !important;
+            overflow: hidden !important;
+        }
+
+        #jenis_pasien+.select2-container .select2-selection--multiple .select2-selection__rendered {
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            height: 32px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            white-space: nowrap !important;
+        }
+
+        #jenis_pasien+.select2-container .select2-selection--multiple .select2-selection__choice {
+            float: none !important;
+            flex: 0 0 auto !important;
+            margin: 0 5px 0 0 !important;
+            padding: 3px 7px !important;
+            font-size: 12px !important;
+        }
+
+        #jenis_pasien+.select2-container .select2-selection--multiple .select2-search--inline {
+            float: none !important;
+            flex: 1 0 70px !important;
+            min-width: 70px !important;
+        }
+
+        #jenis_pasien+.select2-container .select2-selection--multiple .select2-search__field {
+            width: 100% !important;
+            height: 28px !important;
+            margin: 0 !important;
+            padding: 0 3px !important;
+            font-size: 14px !important;
+            line-height: 28px !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* =========================================
+           SEARCH PASIEN
+        ========================================= */
+
+        #search_pasien {
+            width: 100%;
+            height: 38px;
+            box-sizing: border-box;
             border: 1px solid #ced4da;
             border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 14px;
         }
 
-        .select2-container--default .select2-selection--multiple .select2-selection__rendered {
-            line-height: 1.5 !important;
-            padding: 3px 8px;
-            margin: 0;
+        #search_pasien:focus {
+            border-color: #80bdff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, .15);
         }
 
-        .select2-container--default .select2-selection--multiple .select2-selection__choice {
-            margin-top: 3px;
+        #search_pasien::placeholder {
+            color: #a0a7ae;
         }
 
-        .select2-container--default .select2-selection--multiple .select2-search__field {
-            margin-top: 4px;
+        #search_pasien_btn {
+            min-width: 125px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 767px) {
+            .kunjungan-filter-grid {
+                grid-template-columns: 1fr;
+                row-gap: 12px;
+            }
         }
 
         /* DATE RANGE - hanya tampilkan 1 kalender */
@@ -316,6 +434,42 @@
             max-width: 100%;
         }
 
+        /* FILTER LAYOUT */
+        .filter-label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #6c757d;
+        }
+
+        #search_pasien {
+            height: 38px;
+            width: 100%;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        #search_pasien:focus {
+            border-color: #80bdff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, .15);
+        }
+
+        #search_pasien::placeholder {
+            color: #a0a7ae;
+        }
+
+        #search_pasien_btn {
+            min-width: 125px;
+        }
+
+        @media (max-width: 767px) {
+            .filter-grid .col-md-4 {
+                margin-bottom: 12px;
+            }
+        }
+
         /* Tabel memiliki lebar tetap agar kolom tidak menyempit */
         #datatable {
             width: 2315px !important;
@@ -509,10 +663,13 @@
                             </h4>
 
                             {{-- ================= FILTER ================= --}}
-                            <div class="row mb-4">
 
-                                <div class="col-md-4">
-                                    <label>Jenis Kunjungan</label>
+                            <div class="kunjungan-filter-grid mb-4">
+
+                                {{-- BARIS 1 --}}
+                                <div class="filter-item">
+                                    <label for="jenis_kunjungan">Jenis Kunjungan</label>
+
                                     <select id="jenis_kunjungan" class="form-control">
                                         <option value="all" selected>Semua Jenis Kunjungan</option>
                                         <option value="rajal">Rawat Jalan</option>
@@ -521,24 +678,32 @@
                                     </select>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <label>Tanggal Kunjungan</label>
+                                <div class="filter-item">
+                                    <label for="tanggal_range">Tanggal Kunjungan</label>
+
                                     <input type="text" id="tanggal_range" class="form-control">
                                 </div>
 
-                                <div class="col-md-4">
-                                    <label>Ruangan</label>
+                                <div class="filter-item">
+                                    <label for="ruangan">Ruangan</label>
+
                                     <select id="ruangan" class="form-control select2">
-                                        <option value="">Semua</option>
+                                        <option value="">Semua Ruangan</option>
+
                                         @foreach ($ruangan as $s)
-                                            <option value="{{ $s->id }}">{{ $s->title }}</option>
+                                            <option value="{{ $s->id }}">
+                                                {{ $s->title }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
 
-                                <div class="col-md-4">
-                                    <label>Jenis Pasien</label>
+                                {{-- BARIS 2 --}}
+                                <div class="filter-item">
+                                    <label for="jenis_pasien">Jenis Pasien</label>
+
                                     <select id="jenis_pasien" name="jenis_pasien[]" class="form-control" multiple>
+
                                         <option value="ASURANSI">ASURANSI</option>
                                         <option value="BPJS NON PBI">BPJS NON PBI</option>
                                         <option value="BPJS PBI">BPJS PBI</option>
@@ -547,40 +712,59 @@
                                         <option value="PEGAWAI">PEGAWAI</option>
                                         <option value="SPM">SPM</option>
                                         <option value="UMUM">UMUM</option>
+
                                     </select>
                                 </div>
-                                <div class="col-md-4">
-                                    <label>Dokter</label>
+
+                                <div class="filter-item">
+                                    <label for="dokter">Dokter</label>
+
                                     <select id="dokter" class="form-control select2">
-                                        <option value="">Semua</option>
+                                        <option value="">Semua Dokter</option>
+
                                         @foreach ($dokter as $d)
-                                            <option value="{{ $d->id }}">{{ $d->name }}</option>
+                                            <option value="{{ $d->id }}">
+                                                {{ $d->name }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
 
-                            <div class="row mb-3">
+                                <div class="filter-item">
+                                    <label for="search_pasien">Cari Pasien</label>
 
-                                <div class="col-md-3 d-flex gap-2">
-
-                                    <button id="filter" class="btn btn-primary">
-                                        Filter
-                                    </button>
-
-                                    <button id="reset" class="btn btn-secondary">
-                                        Reset
-                                    </button>
-
-                                    <button id="export_excel" class="btn btn-success">
-                                        Export Excel
-                                    </button>
-
+                                    <input type="text" id="search_pasien" class="form-control"
+                                        placeholder="Nama, NRM, dokter, atau poli..." autocomplete="off">
                                 </div>
 
                             </div>
-                            {{-- ================= END FILTER ================= --}}
 
+                            {{-- TOMBOL FILTER --}}
+
+                            <div class="row mb-3">
+                                <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+
+                                    <button id="filter" type="button" class="btn btn-primary">
+                                        <i class="fas fa-filter"></i> Filter
+                                    </button>
+
+                                    <button id="reset" type="button" class="btn btn-secondary">
+                                        <i class="fas fa-redo"></i> Reset
+                                    </button>
+
+                                    <button id="export_excel" type="button" class="btn btn-success">
+                                        <i class="fas fa-file-excel"></i> Export Excel
+                                    </button>
+
+                                    <button id="search_pasien_btn" type="button" class="btn btn-info text-white">
+                                        <i class="fas fa-search"></i> Cari Pasien
+                                    </button>
+
+                                </div>
+                            </div>
+
+                            {{-- ================= END FILTER ================= --}}
+                            
                             <div class="kunjungan-table-wrapper">
 
                                 <table id="datatable" class="table table-bordered w-100">
@@ -932,6 +1116,8 @@
             |--------------------------------------------------------------------------
             */
 
+            let appliedPatientSearch = '';
+
             let table = $('#datatable').DataTable({
 
                 processing: true,
@@ -942,6 +1128,9 @@
                 scrollX: false,
                 scrollCollapse: false,
                 autoWidth: false,
+
+                dom: 'lrtip',
+                searching: false,
 
                 ajax: {
                     url: "{{ route('getDataPoli') }}",
@@ -965,6 +1154,8 @@
 
                         d.ruangan = $('#ruangan').val() || '';
                         d.dokter = $('#dokter').val() || '';
+
+                        d.search_pasien = appliedPatientSearch;
                     }
                 },
 
@@ -1130,6 +1321,26 @@
             // Sesuaikan ukuran kolom setelah tabel selesai dimuat
             table.on('init.dt draw.dt', function() {
                 table.columns.adjust();
+            });
+
+
+            $('#search_pasien_btn').on('click', function() {
+
+                appliedPatientSearch =
+                    ($('#search_pasien').val() || '').trim();
+
+                table.ajax.reload();
+            });
+
+            // Enter juga menjalankan pencarian
+            $('#search_pasien').on('keydown', function(e) {
+
+                if (e.key === 'Enter') {
+
+                    e.preventDefault();
+
+                    $('#search_pasien_btn').trigger('click');
+                }
             });
 
             /*
@@ -2231,6 +2442,8 @@
                 $('#jenis_pasien').val(null).trigger('change');
                 $('#ruangan').val('').trigger('change');
                 $('#dokter').val('').trigger('change');
+                $('#search_pasien').val('');
+                appliedPatientSearch = '';
 
                 const datePicker = $('#tanggal_range').data('daterangepicker');
                 datePicker.setStartDate(moment());
