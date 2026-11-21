@@ -14,6 +14,27 @@
             height: 38px !important;
         }
 
+        /* Select2 multi-select untuk filter Jenis Pasien */
+        .select2-container--default .select2-selection--multiple {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+            line-height: 1.5 !important;
+            padding: 3px 8px;
+            margin: 0;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            margin-top: 3px;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-search__field {
+            margin-top: 4px;
+        }
+
         /* DATE RANGE - hanya tampilkan 1 kalender */
         .daterangepicker .drp-calendar.right {
             display: none !important;
@@ -282,9 +303,9 @@
 
 
         /* TABEL KUNJUNGAN PASIEN */
-
         .kunjungan-table-wrapper {
             width: 100%;
+            max-width: 100%;
             overflow-x: auto;
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
@@ -292,12 +313,14 @@
 
         .dataTables_wrapper {
             width: 100%;
+            max-width: 100%;
         }
 
-        /* Lebar tabel dibuat tetap */
+        /* Tabel memiliki lebar tetap agar kolom tidak menyempit */
         #datatable {
             width: 2315px !important;
             min-width: 2315px !important;
+            max-width: none !important;
             table-layout: fixed !important;
             margin-bottom: 0 !important;
             border-collapse: collapse;
@@ -312,7 +335,7 @@
             font-size: 13px;
         }
 
-        /* Header tidak boleh terpotong menjadi beberapa baris */
+        /* Header */
         #datatable thead th {
             background: #f5f8fc;
             color: #334155;
@@ -321,13 +344,13 @@
             height: 48px;
         }
 
-        /* Isi sel default satu baris */
+        /* Isi tabel */
         #datatable tbody td {
             white-space: nowrap;
             line-height: 1.5;
         }
 
-        /* Kolom teks panjang boleh membungkus */
+        /* Kolom dengan teks panjang */
         #datatable tbody td:nth-child(7),
         #datatable tbody td:nth-child(8),
         #datatable tbody td:nth-child(10),
@@ -338,7 +361,7 @@
             word-break: normal;
         }
 
-        /* Tombol Detail tidak boleh membungkus */
+        /* Tombol Detail */
         #datatable td:nth-child(2) {
             white-space: nowrap;
         }
@@ -348,7 +371,7 @@
             white-space: nowrap;
         }
 
-        /* Lebar masing-masing kolom */
+        /* Lebar kolom */
         #datatable th:nth-child(1),
         #datatable td:nth-child(1) {
             width: 55px;
@@ -423,7 +446,6 @@
         #datatable td:nth-child(15) {
             width: 135px;
         }
-
 
         /* MODAL DETAIL PASIEN */
         #modalRiwayatSoap .modal-dialog {
@@ -516,7 +538,7 @@
 
                                 <div class="col-md-4">
                                     <label>Jenis Pasien</label>
-                                    <select id="jenis_pasien" name="jenis_pasien[]" multiple>
+                                    <select id="jenis_pasien" name="jenis_pasien[]" class="form-control" multiple>
                                         <option value="ASURANSI">ASURANSI</option>
                                         <option value="BPJS NON PBI">BPJS NON PBI</option>
                                         <option value="BPJS PBI">BPJS PBI</option>
@@ -825,7 +847,7 @@
 @endsection
 @push('script')
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
 
             /*
             |--------------------------------------------------------------------------
@@ -890,16 +912,19 @@
                 }
 
             });
+            // Select2 untuk Ruangan dan Dokter
             $('.select2').select2({
                 placeholder: "Cari poli...",
                 allowClear: true,
                 width: '100%'
             });
-            new MultiSelectTag('jenis_pasien', {
-                rounded: true,
-                shadow: true,
-                placeholder: 'Pilih Jenis Pasien'
-            })
+
+            // Select2 multi-select untuk Jenis Pasien
+            $('#jenis_pasien').select2({
+                placeholder: 'Pilih Jenis Pasien',
+                width: '100%',
+                closeOnSelect: false
+            });
 
             /*
             |--------------------------------------------------------------------------
@@ -911,106 +936,101 @@
 
                 processing: true,
                 serverSide: true,
-                responsive: true,
-                autoWidth: false,
 
-                ajax: {
-                    url: "{{ route('getDataPoli') }}",
-                    data: function (d) {
-
-                // Gunakan horizontal scroll, bukan responsive hide columns
+                // Penting: scrollbar hanya dari wrapper luar
                 responsive: false,
                 scrollX: false,
+                scrollCollapse: false,
                 autoWidth: false,
-
-                columnDefs: [{
-                        targets: 0,
-                        width: '50px'
-                    }, // No
-                    {
-                        targets: 1,
-                        width: '95px'
-                    }, // Detail
-                    {
-                        targets: 2,
-                        width: '130px'
-                    }, // Checkout Date
-                    {
-                        targets: 3,
-                        width: '130px'
-                    }, // Schedule Date
-                    {
-                        targets: 4,
-                        width: '140px'
-                    }, // Tanggal Registrasi
-                    {
-                        targets: 5,
-                        width: '130px'
-                    }, // Tanggal Selesai
-                    {
-                        targets: 6,
-                        width: '210px'
-                    }, // Dokter
-                    {
-                        targets: 7,
-                        width: '180px'
-                    }, // Poli
-                    {
-                        targets: 8,
-                        width: '100px'
-                    }, // NRM
-                    {
-                        targets: 9,
-                        width: '190px'
-                    }, // Nama Pasien
-                    {
-                        targets: 10,
-                        width: '140px'
-                    }, // Penjamin
-                    {
-                        targets: 11,
-                        width: '160px'
-                    }, // No SEP
-                    {
-                        targets: 12,
-                        width: '100px'
-                    }, // Sumber
-                    {
-                        targets: 13,
-                        width: '260px'
-                    }, // Diagnosa
-                    {
-                        targets: 14,
-                        width: '120px'
-                    } // Biaya
-                ],
 
                 ajax: {
                     url: "{{ route('getDataPoli') }}",
+
                     data: function(d) {
 
-                        let range = $('#tanggal_range').val();
+                        const range = $('#tanggal_range').val();
 
                         if (range) {
+                            const tanggal = range.split(' - ');
 
-                            let tanggal = range.split(' - ');
-
-                            d.start_date = tanggal[0];
-                            d.end_date = tanggal[1];
-
+                            d.start_date = tanggal[0] || '';
+                            d.end_date = tanggal[1] || '';
                         }
+
                         d.jenis_kunjungan =
                             $('#jenis_kunjungan').val() || 'all';
-                        d.jenis_pasien = $('#jenis_pasien').val();
-                        d.ruangan = $('#ruangan').val();
-                        d.dokter = $('#dokter').val();
-                        console.log('JENIS KUNJUNGAN:', d.jenis_kunjungan);
+
+                        d.jenis_pasien =
+                            $('#jenis_pasien').val() || [];
+
+                        d.ruangan = $('#ruangan').val() || '';
+                        d.dokter = $('#dokter').val() || '';
                     }
                 },
 
-                columns: [
-
+                columnDefs: [{
+                        targets: 0,
+                        width: '55px'
+                    },
                     {
+                        targets: 1,
+                        width: '110px'
+                    },
+                    {
+                        targets: 2,
+                        width: '145px'
+                    },
+                    {
+                        targets: 3,
+                        width: '145px'
+                    },
+                    {
+                        targets: 4,
+                        width: '155px'
+                    },
+                    {
+                        targets: 5,
+                        width: '145px'
+                    },
+                    {
+                        targets: 6,
+                        width: '220px'
+                    },
+                    {
+                        targets: 7,
+                        width: '190px'
+                    },
+                    {
+                        targets: 8,
+                        width: '105px'
+                    },
+                    {
+                        targets: 9,
+                        width: '200px'
+                    },
+                    {
+                        targets: 10,
+                        width: '150px'
+                    },
+                    {
+                        targets: 11,
+                        width: '170px'
+                    },
+                    {
+                        targets: 12,
+                        width: '110px'
+                    },
+                    {
+                        targets: 13,
+                        width: '280px'
+                    },
+                    {
+                        targets: 14,
+                        width: '135px'
+                    }
+                ],
+
+                columns: [{
                         data: 'DT_RowIndex',
                         orderable: false,
                         searchable: false
@@ -1022,7 +1042,6 @@
                         render: function(data, type, row) {
 
                             if (!data) return '-';
-
                             if (type !== 'display') return data;
 
                             const $button = $('<button>', {
@@ -1031,7 +1050,10 @@
                             });
 
                             $button.attr('data-reg-id', data);
-                            $button.html('<i class="fas fa-file-medical"></i> Detail');
+
+                            $button.html(
+                                '<i class="fas fa-file-medical"></i> Detail'
+                            );
 
                             return $button.prop('outerHTML');
                         }
@@ -1048,48 +1070,40 @@
                     {
                         data: 'selesai_date'
                     },
-
                     {
                         data: 'nama_dokter'
                     },
-
                     {
                         data: 'ruangan'
                     },
-
                     {
                         data: 'nrm'
                     },
-
                     {
                         data: 'nama_pasien'
                     },
-
                     {
                         data: 'penjamin'
                     },
-
                     {
                         data: 'bpjs_sep'
                     },
-
                     {
                         data: 'source_reg'
                     },
-
                     {
                         data: 'rm_diagnosa'
                     },
                     {
                         data: 'biaya',
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
+
                             if (data == null) return 'Rp 0';
 
-                            return 'Rp ' + parseInt(data).toLocaleString('id-ID');
+                            return 'Rp ' +
+                                parseInt(data, 10).toLocaleString('id-ID');
                         }
                     }
-
-
                 ],
 
                 order: [
@@ -1106,11 +1120,17 @@
                     paginate: {
                         previous: "‹",
                         next: "›"
-                    }
+                    },
+                    emptyTable: "Tidak ada data kunjungan",
+                    zeroRecords: "Data tidak ditemukan"
                 }
 
             });
 
+            // Sesuaikan ukuran kolom setelah tabel selesai dimuat
+            table.on('init.dt draw.dt', function() {
+                table.columns.adjust();
+            });
 
             /*
             |--------------------------------------------------------------------------
@@ -2192,7 +2212,7 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#filter').click(function () {
+            $('#filter').click(function() {
 
                 table.ajax.reload();
 
@@ -2205,114 +2225,57 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#reset').click(function () {
+            $('#reset').on('click', function() {
+                $('#jenis_kunjungan').val('all');
 
-                $('#jenis_kunjungan').val('');
-                $('#jenis_pasien').val([]);
+                $('#jenis_pasien').val(null).trigger('change');
                 $('#ruangan').val('').trigger('change');
                 $('#dokter').val('').trigger('change');
 
-                $('#tanggal_range').data('daterangepicker').setStartDate(moment());
-                $('#tanggal_range').data('daterangepicker').setEndDate(moment());
+                const datePicker = $('#tanggal_range').data('daterangepicker');
+                datePicker.setStartDate(moment());
+                datePicker.setEndDate(moment());
 
                 table.ajax.reload();
-
             });
+
+
             /*
             |--------------------------------------------------------------------------
             | EXPORT EXCEL
             |--------------------------------------------------------------------------
             */
-
-            $('#export_excel').click(function() {
-
-                // Ambil seluruh filter aktif
-                const dokter = $('#dokter').val();
-                const range = $('#tanggal_range').val();
+            $('#export_excel').on('click', function() {
+                const range = $('#tanggal_range').val() || '';
                 const jenisPasien = $('#jenis_pasien').val() || [];
-                const ruangan = $('#ruangan').val();
-                const jenisKunjungan = $('#jenis_kunjungan').val();
-
-                // Ambil tanggal
-            $('#export_excel').click(function () {
-
-                let dokter = $('#dokter').val() || '';
-                let range = $('#tanggal_range').val() || '';
-                let jenis_pasien = $('#jenis_pasien').val() || [];
-                let ruangan = $('#ruangan').val() || '';
-                let jenis_kunjungan = $('#jenis_kunjungan').val() || 'all';
+                const ruangan = $('#ruangan').val() || '';
+                const dokter = $('#dokter').val() || '';
+                const jenisKunjungan = $('#jenis_kunjungan').val() || 'all';
 
                 let start = '';
                 let end = '';
 
                 if (range) {
                     const tanggal = range.split(' - ');
-                    let tanggal = range.split(' - ');
                     start = tanggal[0] || '';
                     end = tanggal[1] || '';
                 }
 
-                let params = new URLSearchParams();
-
-                params.append('start_date', start);
-                params.append('end_date', end);
-
-                if (Array.isArray(jenis_pasien)) {
-                    jenis_pasien.forEach(function (value) {
-                        if (value) {
-                            params.append('jenis_pasien[]', value);
-                        }
-                    });
-                } else if (jenis_pasien) {
-                    params.append('jenis_pasien', jenis_pasien);
-                }
-
-                if (ruangan) {
-                    params.append('ruangan', ruangan);
-                }
-
-                params.append('jenis_kunjungan', jenis_kunjungan);
-
-                if (Array.isArray(dokter)) {
-                    dokter.forEach(function (value) {
-                        if (value) {
-                            params.append('dokter[]', value);
-                        }
-                    });
-                } else if (dokter) {
-                    params.append('dokter', dokter);
-                }
-
-                // Susun parameter URL dengan aman
                 const params = new URLSearchParams();
-
                 params.append('start_date', start);
                 params.append('end_date', end);
-                params.append('jenis_kunjungan', jenisKunjungan || 'rajal');
+                params.append('jenis_kunjungan', jenisKunjungan);
+                params.append('ruangan', ruangan);
+                params.append('dokter', dokter);
 
-                params.append('ruangan', ruangan || '');
-                params.append('dokter', dokter || '');
-
-                // Multi-select jenis pasien
-                jenisPasien.forEach(function(jenis) {
-                    params.append('jenis_pasien[]', jenis);
+                jenisPasien.forEach(function(value) {
+                    if (value) {
+                        params.append('jenis_pasien[]', value);
+                    }
                 });
 
-                // Endpoint export
-                const url = "{{ route('export.excel') }}";
-
-                // Buka file Excel
-                window.open(
-                    url + '?' + params.toString(),
-                    '_blank'
-                );
-
-                let url = "{{ route('export.excel') }}?" + params.toString();
-
-                console.log('EXPORT URL:', url);
-                console.log('JENIS KUNJUNGAN:', jenis_kunjungan);
-
-                window.open(url, '_blank');
+                const exportUrl = "{{ route('export.excel') }}" + '?' + params.toString();
+                window.open(exportUrl, '_blank');
             });
 
         });

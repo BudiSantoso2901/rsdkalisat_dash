@@ -142,7 +142,13 @@ class DashController extends Controller
         |--------------------------------------------------------------------------
         */
         $baseQuery = DB::table('tr_pxregistrations as t')
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->where('t.status_batal', 0);
@@ -185,7 +191,13 @@ class DashController extends Controller
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->where('t.status_batal', 0)
@@ -211,7 +223,13 @@ class DashController extends Controller
 
             ->where('t.inpatient_status', 0)
             ->where('s.title', '!=', 'IGD 24 JAM')
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->count();
@@ -224,7 +242,13 @@ class DashController extends Controller
         $rawatInap = DB::table('tr_pxregistrations as t')
             ->whereBetween('t.checkout_date', [$awalPeriode, $akhirPeriode])
             ->where('t.inpatient_status', 1)
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->count();
@@ -241,7 +265,13 @@ class DashController extends Controller
 
             ->where('t.inpatient_status', 0)
             ->whereIn('s.title', ['IGD 24 JAM', 'PONEK'])
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', '0')
             ->count();
@@ -274,7 +304,13 @@ class DashController extends Controller
 
             ->whereBetween('t.schedule_date', [$awalPeriode, $akhirPeriode])
 
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', 0)
 
@@ -319,7 +355,13 @@ class DashController extends Controller
 
             ->where('t.inpatient_status', 0)
             ->whereNotIn('s.title', ['IGD 24 JAM', 'PONEK'])
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->where('t.status', 1)
             ->where('t.parent_id', 0)
             ->where('t.status_batal', 0)
@@ -394,7 +436,7 @@ class DashController extends Controller
 
                 return response()->json([
                     'message' =>
-                    'Rentang tanggal harus berada dalam bulan dan tahun terpilih.'
+                        'Rentang tanggal harus berada dalam bulan dan tahun terpilih.'
                 ], 422);
             }
 
@@ -403,7 +445,7 @@ class DashController extends Controller
 
                 return response()->json([
                     'message' =>
-                    'Tanggal mulai tidak boleh setelah tanggal selesai.'
+                        'Tanggal mulai tidak boleh setelah tanggal selesai.'
                 ], 422);
             }
         }
@@ -447,11 +489,13 @@ class DashController extends Controller
                 'PONEK'
             ])
 
-            ->whereIn('r.source_reg', [
-                'ADMISI',
-                'MJKN',
-                'NULL'
-            ])
+            ->where(function ($query) {
+                $query->whereIn('r.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('r.source_reg');
+            })
 
             ->where('r.status', 1)
             ->where('r.parent_id', 0)
@@ -610,11 +654,13 @@ class DashController extends Controller
                 'rm_diagnosa',
                 'source_reg',
             ])
-            ->whereIn('source_reg', [
-                'ADMISI',
-                'MJKN',
-                'NULL'
-            ])
+            ->where(function ($query) {
+                $query->whereIn('source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('source_reg');
+            })
             ->where('status', 1)
             ->where('parent_id', '0');
 
@@ -862,7 +908,7 @@ class DashController extends Controller
 
                 return $row->schedule_date
                     ? Carbon::parse($row->schedule_date)
-                    ->format('d-m-Y H:i')
+                        ->format('d-m-Y H:i')
                     : '-';
             })
 
@@ -875,7 +921,7 @@ class DashController extends Controller
 
                 return $row->reg_date
                     ? Carbon::parse($row->reg_date)
-                    ->format('d-m-Y H:i')
+                        ->format('d-m-Y H:i')
                     : '-';
             })
 
@@ -888,7 +934,7 @@ class DashController extends Controller
 
                 return $row->checkout_date
                     ? Carbon::parse($row->checkout_date)
-                    ->format('d-m-Y H:i')
+                        ->format('d-m-Y H:i')
                     : '-';
             })
 
@@ -901,7 +947,7 @@ class DashController extends Controller
 
                 return $row->bayar_date
                     ? Carbon::parse($row->bayar_date)
-                    ->format('d-m-Y H:i')
+                        ->format('d-m-Y H:i')
                     : '-';
             })
 
@@ -939,7 +985,13 @@ class DashController extends Controller
             ->where('t.id', $registrationId)
             ->where('t.parent_id', '0')
             ->where('t.status', 1)
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->select([
                 't.id',
                 't.numb as no_registrasi',
@@ -1016,7 +1068,7 @@ class DashController extends Controller
             c.time AS jam,
 
             c.profesi,
-            c.ppa,
+            c.ppa as ppa,
 
             c.subyective AS subjective,
             c.obyective AS objective,
@@ -1045,6 +1097,9 @@ class DashController extends Controller
 
         LEFT JOIN sections AS s
             ON s.id = r.section_id
+
+        LEFT JOIN users AS u
+            ON u.id = c.dpjp_verified_by
 
         ORDER BY
             c.date ASC,
@@ -1092,7 +1147,13 @@ class DashController extends Controller
             ->where('t.id', $registrationId)
             ->where('t.parent_id', '0')
             ->where('t.status', 1)
-            ->whereIn('t.source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('t.source_reg', [
+                    'ADMISI',
+                    'MJKN',
+                    'NULL'
+                ])->orWhereNull('t.source_reg');
+            })
             ->select([
                 't.id',
                 't.numb as no_registrasi',
@@ -1220,7 +1281,10 @@ class DashController extends Controller
             ->where('id', $registrationId)
             ->where('parent_id', '0')
             ->where('status', 1)
-            ->whereIn('source_reg', ['ADMISI', 'MJKN', 'NULL'])
+            ->where(function ($query) {
+                $query->whereIn('source_reg', ['ADMISI', 'MJKN', 'NULL'])
+                    ->orWhereNull('source_reg');
+            })
             ->exists();
 
         if (!$rootExists) {
@@ -1323,33 +1387,27 @@ class DashController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $start = $request->start_date;
-        $end = $request->end_date;
-        $jenis = $request->jenis_pasien;
-        $ruangan = $request->ruangan;
-        $jenis_kunjungan = $request->jenis_kunjungan;
-        $dokter = $request->dokter;
-
-        return Excel::download(
-            new KunjunganWithSoapExport(
         $start = $request->input('start_date');
         $end = $request->input('end_date');
         $jenis = $request->input('jenis_pasien');
         $ruangan = $request->input('ruangan');
+
         $jenis_kunjungan = $request->input('jenis_kunjungan', 'all');
         $dokter = $request->input('dokter');
 
-        if (!in_array($jenis_kunjungan, [
-            'all',
-            'rajal',
-            'ranap',
-            'igd'
-        ])) {
+        if (
+            !in_array($jenis_kunjungan, [
+                'all',
+                'rajal',
+                'ranap',
+                'igd'
+            ], true)
+        ) {
             $jenis_kunjungan = 'all';
         }
 
         return Excel::download(
-            new ErmExport(
+            new KunjunganWithSoapExport(
                 $start,
                 $end,
                 $jenis,
