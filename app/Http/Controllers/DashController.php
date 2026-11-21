@@ -852,6 +852,27 @@ class DashController extends Controller
             );
         }
 
+        $searchPasien = trim(
+            (string) $request->input('search_pasien', '')
+        );
+
+        if ($searchPasien !== '') {
+
+            $query->where(function ($search) use ($searchPasien) {
+
+                $search->where('p.name', 'like', "%{$searchPasien}%")
+
+                    ->orWhere('p.nrm', 'like', "%{$searchPasien}%")
+
+                    ->orWhere('u.name', 'like', "%{$searchPasien}%")
+
+                    ->orWhere('s3.title', 'like', "%{$searchPasien}%")
+
+                    ->orWhere('t.numb', 'like', "%{$searchPasien}%");
+
+            });
+        }
+
         /*
     |--------------------------------------------------------------------------
     | ORDER DATA
