@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class tr_pxregistrations extends Model
 {
@@ -76,5 +78,9 @@ class tr_pxregistrations extends Model
     public function patient()
     {
         return $this->belongsTo(Patient::class, 'patient_id', 'id');
+    }
+    public function cppt()
+    {
+        return $this->hasMany(RmCppt::class, 'reg_id', 'id');
     }
 }
