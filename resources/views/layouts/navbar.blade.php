@@ -1,82 +1,81 @@
- <!-- Topbar Start -->
- <div class="navbar-custom">
-     <ul class="list-unstyled topnav-menu float-end mb-0">
-         <li class="dropdown notification-list topbar-dropdown">
-             <a class="nav-link dropdown-toggle nav-user me-0 waves-effect waves-light" data-bs-toggle="dropdown"
-                 href="#" role="button" aria-haspopup="false" aria-expanded="false">
-                 <img src="{{ asset('assets/dokter 2.png') }}" alt="user-image" class="rounded-circle">
-             </a>
-             <div class="dropdown-menu dropdown-menu-end profile-dropdown ">
-                 <!-- item-->
-                 <div class="dropdown-header noti-title">
-                     <h6 class="text-overflow m-0">Welcome !</h6>
-                 </div>
+<!-- Topbar Start -->
+<div class="navbar-custom">
+    <ul class="list-unstyled topnav-menu float-end mb-0">
 
-                 <!-- item-->
-                 <a href="contacts-profile.html" class="dropdown-item notify-item">
-                     <i class="fe-user"></i>
-                     <span>My Account</span>
-                 </a>
+        <!-- PROFILE DROPDOWN -->
+        <li class="dropdown notification-list topbar-dropdown">
+            <a class="nav-link dropdown-toggle nav-user me-0 waves-effect waves-light"
+                data-bs-toggle="dropdown"
+                href="#"
+                role="button"
+                aria-haspopup="false"
+                aria-expanded="false">
 
-                 <!-- item-->
-                 <a href="auth-lock-screen.html" class="dropdown-item notify-item">
-                     <i class="fe-lock"></i>
-                     <span>Lock Screen</span>
-                 </a>
+                <img src="{{ asset('assets/dokter 2.png') }}"
+                    alt="user-image"
+                    class="rounded-circle">
+            </a>
 
-                 <div class="dropdown-divider"></div>
+            <div class="dropdown-menu dropdown-menu-end profile-dropdown">
 
-                 <!-- item-->
-                 <a href="auth-logout.html" class="dropdown-item notify-item">
-                     <i class="fe-log-out"></i>
-                     <span>Logout</span>
-                 </a>
+                <!-- Welcome -->
+                <div class="dropdown-header noti-title">
+                    <h6 class="text-overflow m-0">Welcome !</h6>
+                </div>
 
-             </div>
-         </li>
+                <!-- My Account -->
+                <a href="contacts-profile.html" class="dropdown-item notify-item">
+                    <i class="fe-user"></i>
+                    <span>My Account</span>
+                </a>
 
-         <li class="dropdown notification-list">
-             <a href="javascript:void(0);" class="nav-link right-bar-toggle waves-effect waves-light">
-                 <i class="fe-settings noti-icon"></i>
-             </a>
-         </li>
+                <!-- Lock Screen -->
+                <a href="auth-lock-screen.html" class="dropdown-item notify-item">
+                    <i class="fe-lock"></i>
+                    <span>Lock Screen</span>
+                </a>
 
-     </ul>
+                <div class="dropdown-divider"></div>
 
-     <!-- LOGO -->
-     <div class="logo-box">
-         <a href="index.html" class="logo logo-light text-center">
-             <span class="logo-sm">
-                 <img src="{{ asset('assets/rsd.png') }}" alt="" height="44">
-             </span>
-             <span class="logo-lg">
-                 <img src="{{ asset('assets/rsd.png') }}" alt="" height="16">
-             </span>
-         </a>
-         <a href="index.html" class="logo logo-dark text-center">
-             <span class="logo-sm">
-                 <img src="{{ asset('assets/logo.png') }}" alt="" height="44">
-             </span>
-             <span class="logo-lg">
-                 <img src="{{ asset('assets/logo.png') }}" alt="" height="44">
-             </span>
-         </a>
-     </div>
+                <!-- LOGOUT LARAVEL -->
+                <form action="{{ route('logout') }}" method="POST">
+                    @csrf
 
-     {{-- <ul class="list-unstyled topnav-menu topnav-menu-left mb-0">
-         <li>
-             <button class="button-menu-mobile disable-btn waves-effect">
-                 <i class="fe-menu"></i>
-             </button>
-         </li>
+                    <button type="submit"
+                        class="dropdown-item notify-item"
+                        style="border: none; background: transparent; width: 100%; text-align: left;">
 
-         <li>
-             <h4 class="page-title-main">Dashboard</h4>
-         </li>
+                        <i class="fe-log-out"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
 
-     </ul> --}}
+            </div>
+        </li>
 
-     <div class="clearfix"></div>
+    </ul>
 
- </div>
- <!-- end Topbar -->
+    <!-- LOGO -->
+    <div class="logo-box">
+        <a href="index.html" class="logo logo-light text-center">
+            <span class="logo-sm">
+                <img src="{{ asset('assets/rsd.png') }}" alt="" height="44">
+            </span>
+            <span class="logo-lg">
+                <img src="{{ asset('assets/rsd.png') }}" alt="" height="16">
+            </span>
+        </a>
+
+        <a href="index.html" class="logo logo-dark text-center">
+            <span class="logo-sm">
+                <img src="{{ asset('assets/logo.png') }}" alt="" height="44">
+            </span>
+            <span class="logo-lg">
+                <img src="{{ asset('assets/logo.png') }}" alt="" height="44">
+            </span>
+        </a>
+    </div>
+
+    <div class="clearfix"></div>
+</div>
+<!-- end Topbar -->
