@@ -1089,7 +1089,11 @@ class DashController extends Controller
             c.time AS jam,
 
             c.profesi,
-            c.ppa as ppa,
+
+            COALESCE(
+                NULLIF(TRIM(c.ppa), ''),
+                NULLIF(TRIM(up.name), '')
+            ) AS ppa,
 
             c.subyective AS subjective,
             c.obyective AS objective,
@@ -1119,8 +1123,8 @@ class DashController extends Controller
         LEFT JOIN sections AS s
             ON s.id = r.section_id
 
-        LEFT JOIN users AS u
-            ON u.id = c.dpjp_verified_by
+        LEFT JOIN users AS up
+            ON up.id = c.petugas_id
 
         ORDER BY
             c.date ASC,
